@@ -1,3 +1,5 @@
+import pandas as pd
+
 class Preprocessor(object) :
     def __init__(self, sequence_length, encoding_size) :
         self.sequence_length = sequence_length
