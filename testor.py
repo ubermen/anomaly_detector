@@ -1,4 +1,4 @@
-class TestUtil(object) :
+class Testor(object) :
     def __init__(self, anomaly_score) :
         self.anomaly_score = anomaly_score
 
