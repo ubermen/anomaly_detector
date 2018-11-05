@@ -1,9 +1,10 @@
 import tensorflow as tf
 
 class TestUtil(object) :
-    def __init__(self, anomaly_score) :
+    def __init__(self, anomaly_score, data) :
         self.anomaly_score = anomaly_score
-
+        self.data = data
+        
     def match_and_sort(self, key, value) :
         matched = [(i,j) for i,j in zip(key, value)]
         sorted_by_value = sorted(matched, key=lambda x: x[1])
@@ -22,13 +23,13 @@ class TestUtil(object) :
             result.append(v1)
         return result
 
-    def get_score_list(self, sess, samples, placeholder):
-        feed = {placeholder: samples}
+    def get_score_list(self, sess, samples):
+        feed = {data: samples}
         score = sess.run([self.anomaly_score], feed)
         return score[0]
 
-    def test(self, tag, sess, samples, placeholder) :
+    def test(self, tag, sess, samples) :
         ascii_codes_list = self.convert_onehot_to_ascii(sess, samples)
-        score = self.get_score_list(sess, samples, placeholder)
+        score = self.get_score_list(sess, samples)
         sorted_by_score = self.match_and_sort(ascii_codes_list, score)
         print(sorted_by_score)
