@@ -1,3 +1,5 @@
+import tensorflow as tf
+
 class VariationalAutoencoder(object) :
     def __init__(self, sequence_length, encoding_size) :
         self.code_size = 2
