@@ -24,7 +24,7 @@ class TestUtil(object) :
         return result
 
     def get_score_list(self, sess, samples):
-        feed = {data: samples}
+        feed = {self.data: samples}
         score = sess.run([self.anomaly_score], feed)
         return score[0]
 
