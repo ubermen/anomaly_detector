@@ -4,8 +4,8 @@ import numpy as np
 import uuid
 
 class VariationalAutoencoder(object) :
-    def __init__(self, sequence_length, encoding_size) :
-        self.code_size = 2
+    def __init__(self, sequence_length, encoding_size, code_size=2) :
+        self.code_size = code_size
         print('latent_size',self.code_size)
         self.sequence_length = sequence_length
         self.encoding_size = encoding_size
