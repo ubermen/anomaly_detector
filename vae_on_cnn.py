@@ -1,6 +1,7 @@
 import tensorflow as tf
 tfd = tf.contrib.distributions
 import numpy as np
+import uuid
 
 class VariationalAutoencoder(object) :
     def __init__(self, sequence_length, encoding_size) :
@@ -28,8 +29,10 @@ class VariationalAutoencoder(object) :
         self.final_conv_shape = [self.conv_result_height, self.conv_result_width, self.conv2_filter]
         print('final_conv',self.final_conv_shape)
 
-        self.make_encoder = tf.make_template('encoder', self.make_encoder)
-        self.make_decoder = tf.make_template('decoder', self.make_decoder)
+        self.encoder_id = uuid.uuid4()
+        self.decoder_id = uuid.uuid4()
+        self.make_encoder = tf.make_template(self.encoder_id, self.make_encoder)
+        self.make_decoder = tf.make_template(self.decoder_id, self.make_decoder)
 
     def make_prior(self):
         code_size = self.code_size
