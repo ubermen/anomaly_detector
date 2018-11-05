@@ -41,10 +41,10 @@ class Preprocessor(object) :
         df = pd.io.gbq.read_gbq(query, project_id=project_id, verbose=False)
         return df
 
-    def extract_from_bigquery(self, tag, project_id, dataset, table, limit=None) :
+    def extract_from_bigquery(self, tag, project_id, dataset, table, limit=None, print_result=False) :
         df = self.get_df_from_bigquery(project_id, dataset, table, limit)
         nd = self.convert_str_df_to_onehot_ndarray(tag, df)
-        print(tag, nd.shape[0])
+        if print_result : print(tag, nd.shape[0])
         df = None
         return nd
     
@@ -55,9 +55,9 @@ class Preprocessor(object) :
         df = pd.io.gbq.read_gbq(query, project_id=project_id, verbose=False)
         return df
 
-    def extract_batch_from_bigquery(self, tag, project_id, dataset, table, min_rnum, max_rnum) :
+    def extract_batch_from_bigquery(self, tag, project_id, dataset, table, min_rnum, max_rnum, print_result=False) :
         df = self.get_df_batch_from_bigquery(project_id, dataset, table, min_rnum, max_rnum)
         nd = self.convert_str_df_to_onehot_ndarray(tag, df)
-        print(tag, min_rnum, max_rnum)
+        if print_result : print(tag, min_rnum, max_rnum)
         df = None
         return nd
