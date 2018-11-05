@@ -22,13 +22,13 @@ class TestUtil(object) :
             result.append(v1)
         return result
 
-    def get_score_list(self, sess, samples):
-        feed = {data: samples}
+    def get_score_list(self, sess, samples, placeholder):
+        feed = {placeholder: samples}
         score = sess.run([self.anomaly_score], feed)
         return score[0]
 
-    def test(self, tag, sess, samples) :
+    def test(self, tag, sess, samples, placeholder) :
         ascii_codes_list = self.convert_onehot_to_ascii(sess, samples)
-        score = self.get_score_list(sess, samples)
+        score = self.get_score_list(sess, samples, placeholder)
         sorted_by_score = self.match_and_sort(ascii_codes_list, score)
         print(sorted_by_score)
