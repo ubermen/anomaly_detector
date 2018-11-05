@@ -14,20 +14,20 @@ class Preprocessor(object) :
         if ascii_code is not None and (48 <= ascii_code <= 57) : return 1
         else : return 0
 
-    def convert_str_df_to_onehot_ndarray(self, tag, df, max_seq_length, encoding_size) :
+    def convert_str_df_to_onehot_ndarray(self, tag, df) :
         raw = df.values
         data_count = raw.shape[0]
-        charseqs = np.zeros((data_count, max_seq_length, encoding_size))
+        charseqs = np.zeros((data_count, self.sequence_length, self.encoding_size))
         for i, v in enumerate(raw) :
             value = str(v[0])
             if value is None : continue
-            instance_length = min(max_seq_length, len(value))
+            instance_length = min(self.sequence_length, len(value))
             for j in range(instance_length) :
                 unicode = ord(value[j])
-                if unicode >= encoding_size : continue
+                if unicode >= self.encoding_size : continue
                 charseqs[i][j][unicode] = 1
         print(tag, data_count)
-        return charseqs.reshape(data_count, max_seq_length, encoding_size).astype('float32')
+        return charseqs.reshape(data_count, self.sequence_length, self.encoding_size).astype('float32')
 
     def get_df_from_bigquery(self, project_id, dataset, table, limit=None) :
         query = 'SELECT * FROM [{}.{}.{}]'.format(project_id, dataset, table)
@@ -37,6 +37,6 @@ class Preprocessor(object) :
 
     def extract_from_bigquery(self, tag, project_id, dataset, table, limit=None) :
         df = self.get_df_from_bigquery(project_id, dataset, table, limit)
-        nd = self.convert_str_df_to_onehot_ndarray(tag, df, self.sequence_length, self.encoding_size)
+        nd = self.convert_str_df_to_onehot_ndarray(tag, df)
         df = None
         return nd
