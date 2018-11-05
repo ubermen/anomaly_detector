@@ -33,7 +33,6 @@ class Preprocessor(object) :
                 unicode = ord(value[j])
                 if unicode >= self.encoding_size : continue
                 charseqs[i][j][unicode] = 1
-        print(tag, data_count)
         return charseqs.reshape(data_count, self.sequence_length, self.encoding_size).astype('float32')
 
     def get_df_from_bigquery(self, project_id, dataset, table, limit=None) :
@@ -45,6 +44,7 @@ class Preprocessor(object) :
     def extract_from_bigquery(self, tag, project_id, dataset, table, limit=None) :
         df = self.get_df_from_bigquery(project_id, dataset, table, limit)
         nd = self.convert_str_df_to_onehot_ndarray(tag, df)
+        print(tag, nd.shape[0])
         df = None
         return nd
     
@@ -56,5 +56,6 @@ class Preprocessor(object) :
     def extract_batch_from_bigquery(self, tag, project_id, dataset, table, min_rnum, max_rnum) :
         df = self.get_df_batch_from_bigquery(project_id, dataset, table, min_rnum, max_rnum)
         nd = self.convert_str_df_to_onehot_ndarray(tag, df)
+        print(tag, min_rnum, max_rnum)
         df = None
         return nd
