@@ -49,6 +49,13 @@ class Preprocessor(object) :
         return nd
     
     def get_df_batch_from_bigquery(self, project_id, dataset, table, min_rnum, max_rnum) :
-        query = 'SELECT * except(rnum) FROM (SELECT *, ROW_NUMBER() OVER() as rnum FROM [{}.{}.{}]) WHERE {} <= rnum AND rnum <= {}'.format(project_id, dataset, table, min_rnum, max_rnum)
+        query = 'SELECT * FROM (SELECT *, ROW_NUMBER() OVER() as rnum FROM [{}.{}.{}]) WHERE {} <= rnum AND rnum <= {}'.format(project_id, dataset, table, min_rnum, max_rnum)
         df = pd.io.gbq.read_gbq(query, project_id=project_id, verbose=False)
+        df = df[lambda df : df.columns[0]]
         return df
+
+    def extract_batch_from_bigquery(self, tag, project_id, dataset, table, min_rnum, max_rnum) :
+        df = self.get_df_batch_from_bigquery(project_id, dataset, table, min_rnum, max_rnum)
+        nd = self.convert_str_df_to_onehot_ndarray(tag, df)
+        df = None
+        return nd
