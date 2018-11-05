@@ -29,8 +29,8 @@ class VariationalAutoencoder(object) :
         self.final_conv_shape = [self.conv_result_height, self.conv_result_width, self.conv2_filter]
         print('final_conv',self.final_conv_shape)
 
-        self.encoder_id = uuid.uuid4()
-        self.decoder_id = uuid.uuid4()
+        self.encoder_id = str(uuid.uuid4())
+        self.decoder_id = str(uuid.uuid4())
         self.make_encoder = tf.make_template(self.encoder_id, self.make_encoder)
         self.make_decoder = tf.make_template(self.decoder_id, self.make_decoder)
 
