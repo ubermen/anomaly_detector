@@ -1,3 +1,5 @@
+import tensorflow as tf
+
 class TestUtil(object) :
     def __init__(self, anomaly_score) :
         self.anomaly_score = anomaly_score
