@@ -49,7 +49,9 @@ class Preprocessor(object) :
         return nd
     
     def get_df_batch_from_bigquery(self, project_id, dataset, table, min_rnum, max_rnum) :
-        query = 'SELECT * FROM (SELECT *, ROW_NUMBER() OVER() as rnum FROM [{}.{}.{}]) WHERE {} <= rnum AND rnum <= {}'.format(project_id, dataset, table, min_rnum+1, max_rnum+1)
+        min_rnum += 1
+        max_rnum += 1
+        query = 'SELECT * FROM (SELECT *, ROW_NUMBER() OVER() as rnum FROM [{}.{}.{}]) WHERE {} <= rnum AND rnum <= {}'.format(project_id, dataset, table, min_rnum, max_rnum)
         df = pd.io.gbq.read_gbq(query, project_id=project_id, verbose=False)
         return df
 
