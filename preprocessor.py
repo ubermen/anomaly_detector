@@ -47,3 +47,8 @@ class Preprocessor(object) :
         nd = self.convert_str_df_to_onehot_ndarray(tag, df)
         df = None
         return nd
+    
+    def get_df_batch_from_bigquery(self, project_id, dataset, table, min_rnum, max_rnum) :
+        query = 'SELECT * except(rnum) FROM (SELECT *, ROW_NUMBER() OVER() as rnum FROM [{}.{}.{}]) WHERE {} <= rnum AND rnum <= {}'.format(project_id, dataset, table, min_rnum, max_rnum)
+        df = pd.io.gbq.read_gbq(query, project_id=project_id, verbose=False)
+        return df
