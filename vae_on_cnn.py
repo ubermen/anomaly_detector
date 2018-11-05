@@ -1,5 +1,6 @@
 import tensorflow as tf
 tfd = tf.contrib.distributions
+import numpy as np
 
 class VariationalAutoencoder(object) :
     def __init__(self, sequence_length, encoding_size) :
