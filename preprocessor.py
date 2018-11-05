@@ -18,7 +18,7 @@ class Preprocessor(object) :
         raw = df.values
         return self.convert_str_ndarray_to_onehot_ndarray(tag, raw)
 
-    def convert_str_array_to_onehot_ndarray(self, tag, raw) :
+    def convert_str_ndarray_to_onehot_ndarray(self, tag, raw) :
         data_count = raw.shape[0]
         charseqs = np.zeros((data_count, self.sequence_length, self.encoding_size))
         for i, v in enumerate(raw) :
