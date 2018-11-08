@@ -15,8 +15,8 @@ class VariationalAutoencoder(object) :
         if kernel is not None : 
             self.kernel = kernel
         else :
-            kernel_height = max(2, int(self.encoding_size/2))
-            kernel_width = max(2, int(self.sequence_length/2))
+            kernel_height = max(2, int(self.sequence_length/2))
+            kernel_width = max(2, int(self.encoding_size/2))
             self.kernel = (kernel_height, kernel_width)
             
         print('kernel',self.kernel)
