@@ -4,7 +4,7 @@ import numpy as np
 import uuid
 
 class VariationalAutoencoder(object) :
-    def __init__(self, sequence_length, encoding_size, code_size=2) :
+    def __init__(self, sequence_length, encoding_size, code_size=2, kernel=None, stride=None, conv1_filter=16, conv2_filter=32) :
         self.code_size = code_size
         print('latent_size',self.code_size)
         self.sequence_length = sequence_length
@@ -12,18 +12,26 @@ class VariationalAutoencoder(object) :
         self.data_shape = [sequence_length, encoding_size]
         self.is_training = True
 
-        kernel_height = max(2, int(self.sequence_length/2))
-        kernel_width = max(2, int(self.sequence_length/2))
-        self.kernel = (kernel_height, kernel_width)
+        if kernel is not None : 
+            self.kernel = kernel
+        else :
+            kernel_height = max(2, int(self.encoding_size/2))
+            kernel_width = max(2, int(self.sequence_length/2))
+            self.kernel = (kernel_height, kernel_width)
+            
         print('kernel',self.kernel)
 
-        stride_vertical = 1
-        stride_horizontal = 2
-        self.stride = (stride_vertical, stride_horizontal)
+        if stride is not None :
+            self.stride = stride
+        else :
+            stride_vertical = 1
+            stride_horizontal = 2
+            self.stride = (stride_vertical, stride_horizontal)
+            
         print('stride',self.stride)
 
-        self.conv1_filter = 16
-        self.conv2_filter = 32
+        self.conv1_filter = conv1_filter
+        self.conv2_filter = conv2_filter
         self.conv_result_height = int(sequence_length / stride_vertical / stride_vertical)
         self.conv_result_width = int(encoding_size / stride_horizontal / stride_horizontal)
         self.final_conv_shape = [self.conv_result_height, self.conv_result_width, self.conv2_filter]
