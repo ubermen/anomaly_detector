@@ -6,6 +6,7 @@ from __future__ import division
 from __future__ import print_function
 
 import functools
+import json
 import os
 
 # Dependency imports
@@ -325,6 +326,28 @@ def build_input_fns(data_dir, batch_size):
 
   return train_input_fn, eval_input_fn
 
+
+def _get_session_config_from_env_var():
+  """Returns a tf.ConfigProto instance that has appropriate device_filters set.
+
+  """
+
+  tf_config = json.loads(os.environ.get('TF_CONFIG', '{}'))
+
+  if (tf_config and 'task' in tf_config and 'type' in tf_config['task'] and
+          'index' in tf_config['task']):
+    # Master should only communicate with itself and ps
+    if tf_config['task']['type'] == 'master':
+      return tf.ConfigProto(device_filters=['/job:ps', '/job:master'])
+    # Worker should only communicate with itself and ps
+    elif tf_config['task']['type'] == 'worker':
+      return tf.ConfigProto(device_filters=[
+        '/job:ps',
+        '/job:worker/task:%d' % tf_config['task']['index']
+      ])
+  return None
+
+
 def main(argv):
   del argv  # unused
 
@@ -341,23 +364,31 @@ def main(argv):
     train_input_fn, eval_input_fn = build_input_fns(FLAGS.data_dir,
                                                     FLAGS.batch_size)
 
+  train_spec = tf.estimator.TrainSpec(
+    train_input_fn, max_steps=FLAGS.max_steps)
+
+  eval_spec = tf.estimator.EvalSpec(
+    eval_input_fn,
+    steps=FLAGS.viz_steps,
+    name='lqad-eval')
+
+  run_config = tf.estimator.RunConfig(session_config=_get_session_config_from_env_var())
+  run_config = run_config.replace(model_dir=FLAGS.model_dir)
+  #run_config = tf.estimator.RunConfig(model_dir=FLAGS.model_dir,save_checkpoints_steps=FLAGS.viz_steps)
+
   estimator = tf.estimator.Estimator(
     model_fn,
     params=params,
-    config=tf.estimator.RunConfig(
-      model_dir=FLAGS.model_dir,
-      save_checkpoints_steps=FLAGS.viz_steps,
-    ),
+    config=run_config
   )
 
-  for _ in range(FLAGS.max_steps // FLAGS.viz_steps):
-    estimator.train(train_input_fn, steps=FLAGS.viz_steps)
-    eval_results = estimator.evaluate(eval_input_fn)
-    print("Evaluation_results:\n\t%s\n" % eval_results)
-
+  tf.estimator.train_and_evaluate(estimator, train_spec, eval_spec)
+  #for _ in range(FLAGS.max_steps // FLAGS.viz_steps):
+  #  estimator.train(train_input_fn, steps=FLAGS.viz_steps)
+  #  eval_results = estimator.evaluate(eval_input_fn)
+  #  print("Evaluation_results:\n\t%s\n" % eval_results)
 
 if __name__ == "__main__":
-  FLAGS.data_dir = "gs://bigus/lqad/data"
-  FLAGS.model_dir = "gs://bigus/lqad/model"
-  FLAGS.delete_existing = True
+  FLAGS.data_dir = "gs://bigus/data"
+  FLAGS.model_dir = "gs://bigus/model"
   tf.app.run()
