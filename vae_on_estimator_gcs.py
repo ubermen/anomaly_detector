@@ -11,6 +11,7 @@ import os
 
 # Dependency imports
 from absl import flags
+import argparse
 import numpy as np
 import pandas as pd
 from six.moves import urllib
@@ -22,7 +23,7 @@ seq_len = 28
 enc_size = 128
 IMAGE_SHAPE = [seq_len, enc_size, 1]
 
-flags.DEFINE_float("learning_rate", default=0.001, help="Initial learning rate.")
+flags.DEFINE_float("learning_rate", default=0.0001, help="Initial learning rate.")
 flags.DEFINE_integer("max_steps", default=1001, help="Number of training steps to run.")
 flags.DEFINE_integer("latent_size", default=16, help="Number of dimensions in the latent code (z).")
 flags.DEFINE_integer("base_depth", default=32, help="Base depth for layers.")
@@ -389,6 +390,12 @@ def main(argv):
   #  print("Evaluation_results:\n\t%s\n" % eval_results)
 
 if __name__ == "__main__":
+  parser = argparse.ArgumentParser(description='Process data and model path info.')
+  parser.add_argument(
+    '--job-dir',
+    help='GCS location to write checkpoints and export models')
+  args = parser.parse_args()
   FLAGS.data_dir = "gs://bigus/data"
-  FLAGS.model_dir = "gs://bigus/model"
+  FLAGS.model_dir = args.job_dir + "/model"
+  FLAGS.max_steps = 101
   tf.app.run()
