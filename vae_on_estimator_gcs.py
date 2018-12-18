@@ -13,8 +13,6 @@ import os
 from absl import flags
 import argparse
 import numpy as np
-import pandas as pd
-from six.moves import urllib
 import tensorflow as tf
 
 tfd = tf.contrib.distributions
@@ -44,7 +42,7 @@ flags.DEFINE_bool("analytic_kl", default=False,
                        "then you must also specify `mixture_components=1`.")
 flags.DEFINE_string("data_dir", default=os.path.join(os.getenv("TEST_TMPDIR", "/tmp"), "vae/data"), help="Directory where data is stored (if using real data).")
 flags.DEFINE_string("model_dir", default=os.path.join(os.getenv("TEST_TMPDIR", "/tmp"), "vae/"), help="Directory to put the model's fit.")
-flags.DEFINE_integer("viz_steps", default=500, help="Frequency at which to save visualizations.")
+flags.DEFINE_integer("viz_steps", default=100, help="Frequency at which to save visualizations.")
 flags.DEFINE_bool("fake_data", default=False, help="If true, uses fake data instead of MNIST.")
 flags.DEFINE_bool("delete_existing", default=False, help="If true, deletes existing `model_dir` directory.")
 
@@ -81,7 +79,11 @@ def make_encoder(activation, latent_size, base_depth):
 
   def encoder(images):
     images = 2 * tf.cast(images, dtype=tf.float32) - 1
-    net = encoder_net(images)
+    try :
+      net = encoder_net(images)
+    except IndexError :
+      raise Exception("[debug] tensor shape = ", tf.shape(images))
+
     return tfd.MultivariateNormalDiag(
       loc=net[..., :latent_size],
       scale_diag=tf.nn.softplus(net[..., latent_size:] +
@@ -165,28 +167,6 @@ def make_mixture_prior(latent_size, mixture_components):
     mixture_distribution=tfd.Categorical(logits=mixture_logits),
     name="prior")
 
-
-def pack_images(images, rows, cols):
-  """Helper utility to make a field of images."""
-  shape = tf.shape(images)
-  width = shape[-3]
-  height = shape[-2]
-  depth = shape[-1]
-  images = tf.reshape(images, (-1, width, height, depth))
-  batch = tf.shape(images)[0]
-  rows = tf.minimum(rows, batch)
-  cols = tf.minimum(batch // rows, cols)
-  images = images[:rows * cols]
-  images = tf.reshape(images, (rows, cols, width, height, depth))
-  images = tf.transpose(images, [0, 2, 1, 3, 4])
-  images = tf.reshape(images, [1, rows * width, cols * height, depth])
-  return images
-
-
-def image_tile_summary(name, tensor, rows=8, cols=8):
-  tf.summary.image(name, pack_images(tensor, rows, cols), max_outputs=1)
-
-
 def model_fn(features, labels, mode, params, config):
   """Builds the model function for use in an estimator.
   Arguments:
@@ -215,21 +195,10 @@ def model_fn(features, labels, mode, params, config):
   latent_prior = make_mixture_prior(params["latent_size"],
                                     params["mixture_components"])
 
-  image_tile_summary("input", tf.to_float(features), rows=1, cols=16)
 
   approx_posterior = encoder(features)
   approx_posterior_sample = approx_posterior.sample(params["n_samples"])
   decoder_likelihood = decoder(approx_posterior_sample)
-  image_tile_summary(
-    "recon/sample",
-    tf.to_float(decoder_likelihood.sample()[:3, :16]),
-    rows=3,
-    cols=16)
-  image_tile_summary(
-    "recon/mean",
-    decoder_likelihood.mean()[:3, :16],
-    rows=3,
-    cols=16)
 
   # `distortion` is just the negative log likelihood.
   distortion = -decoder_likelihood.log_prob(features)
@@ -247,7 +216,7 @@ def model_fn(features, labels, mode, params, config):
   elbo_local = -(rate + distortion)
 
   elbo = tf.reduce_mean(elbo_local)
-  loss = -elbo
+
   tf.summary.scalar("elbo", elbo)
 
   importance_weighted_elbo = tf.reduce_mean(
@@ -257,9 +226,6 @@ def model_fn(features, labels, mode, params, config):
 
   # Decode samples from the prior for visualization.
   random_image = decoder(latent_prior.sample(16))
-  image_tile_summary(
-    "random/sample", tf.to_float(random_image.sample()), rows=4, cols=4)
-  image_tile_summary("random/mean", random_image.mean(), rows=4, cols=4)
 
   # Perform variational inference by minimizing the -ELBO.
   global_step = tf.train.get_or_create_global_step()
@@ -267,18 +233,32 @@ def model_fn(features, labels, mode, params, config):
                                         params["max_steps"])
   tf.summary.scalar("learning_rate", learning_rate)
   optimizer = tf.train.AdamOptimizer(learning_rate)
+
+  loss = -elbo
   train_op = optimizer.minimize(loss, global_step=global_step)
+  eval_metric_ops={
+    "elbo": tf.metrics.mean(elbo),
+    "elbo/importance_weighted": tf.metrics.mean(importance_weighted_elbo),
+    "rate": tf.metrics.mean(avg_rate),
+    "distortion": tf.metrics.mean(avg_distortion),
+  }
+
+  prediction = {
+    'value' : features,
+    'anomaly_score' : distortion
+  }
+
+  export_outputs = {
+    'prediction': tf.estimator.export.PredictOutput(prediction)
+  }
 
   return tf.estimator.EstimatorSpec(
     mode=mode,
     loss=loss,
     train_op=train_op,
-    eval_metric_ops={
-      "elbo": tf.metrics.mean(elbo),
-      "elbo/importance_weighted": tf.metrics.mean(importance_weighted_elbo),
-      "rate": tf.metrics.mean(avg_rate),
-      "distortion": tf.metrics.mean(avg_distortion),
-    },
+    eval_metric_ops=eval_metric_ops,
+    predictions=prediction,
+    export_outputs=export_outputs,
   )
 
 def convert_string_to_onehot(value):
@@ -296,7 +276,7 @@ def static_nlog_dataset(data_dir, file_name):
 
   def _parser(s):
     booltensor = tf.py_func(str_to_arr, [s], tf.bool)
-    reshaped = tf.reshape(booltensor, [seq_len, enc_size, 1])
+    reshaped = tf.reshape(booltensor, IMAGE_SHAPE)
     return tf.to_float(reshaped), tf.constant(0, tf.int32)
 
   return dataset.map(_parser)
@@ -327,7 +307,6 @@ def build_input_fns(data_dir, batch_size):
 
   return train_input_fn, eval_input_fn
 
-
 def _get_session_config_from_env_var():
   """Returns a tf.ConfigProto instance that has appropriate device_filters set.
 
@@ -348,6 +327,9 @@ def _get_session_config_from_env_var():
       ])
   return None
 
+def serving_input_fn():
+  feature_placeholders = tf.placeholder(tf.float32, [None] + IMAGE_SHAPE)
+  return tf.estimator.export.TensorServingInputReceiver(feature_placeholders, feature_placeholders)
 
 def main(argv):
   del argv  # unused
@@ -368,14 +350,16 @@ def main(argv):
   train_spec = tf.estimator.TrainSpec(
     train_input_fn, max_steps=FLAGS.max_steps)
 
+  exporter = tf.estimator.FinalExporter('exporter', serving_input_fn)
+
   eval_spec = tf.estimator.EvalSpec(
     eval_input_fn,
     steps=FLAGS.viz_steps,
+    exporters=[exporter],
     name='lqad-eval')
 
   run_config = tf.estimator.RunConfig(session_config=_get_session_config_from_env_var())
   run_config = run_config.replace(model_dir=FLAGS.model_dir)
-  #run_config = tf.estimator.RunConfig(model_dir=FLAGS.model_dir,save_checkpoints_steps=FLAGS.viz_steps)
 
   estimator = tf.estimator.Estimator(
     model_fn,
@@ -384,10 +368,6 @@ def main(argv):
   )
 
   tf.estimator.train_and_evaluate(estimator, train_spec, eval_spec)
-  #for _ in range(FLAGS.max_steps // FLAGS.viz_steps):
-  #  estimator.train(train_input_fn, steps=FLAGS.viz_steps)
-  #  eval_results = estimator.evaluate(eval_input_fn)
-  #  print("Evaluation_results:\n\t%s\n" % eval_results)
 
 if __name__ == "__main__":
   parser = argparse.ArgumentParser(description='Process data and model path info.')
@@ -396,6 +376,6 @@ if __name__ == "__main__":
     help='GCS location to write checkpoints and export models')
   args = parser.parse_args()
   FLAGS.data_dir = "gs://bigus/data"
-  FLAGS.model_dir = args.job_dir + "/model"
+  FLAGS.model_dir = args.job_dir
   FLAGS.max_steps = 101
   tf.app.run()
