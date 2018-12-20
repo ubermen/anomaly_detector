@@ -190,7 +190,8 @@ def model_fn(features, labels, mode, params, config):
                          params["base_depth"])
   latent_prior = make_mixture_prior(params["latent_size"],
                                     params["mixture_components"])
-
+  raws = features
+  features = extract_feature(features)
 
   approx_posterior = encoder(features)
   approx_posterior_sample = approx_posterior.sample(params["n_samples"])
@@ -240,7 +241,7 @@ def model_fn(features, labels, mode, params, config):
   }
 
   prediction = {
-    'value' : features,
+    'value' : raws,
     'anomaly_score' : distortion
   }
 
@@ -267,12 +268,12 @@ def build_input_fns(data_dir, batch_size):
   # Build an iterator over training batches.
   training_dataset = static_nlog_dataset(data_dir, 'globalsignin_devicemodel_train')
   training_dataset = training_dataset.shuffle(1000).repeat().batch(batch_size)
-  train_input_fn = lambda: extract_feature(training_dataset.make_one_shot_iterator().get_next())
+  train_input_fn = lambda: training_dataset.make_one_shot_iterator().get_next()
 
   # Build an iterator over the heldout set.
   eval_dataset = static_nlog_dataset(data_dir, 'globalsignin_devicemodel_eval')
   eval_dataset = eval_dataset.batch(batch_size)
-  eval_input_fn = lambda: extract_feature(eval_dataset.make_one_shot_iterator().get_next())
+  eval_input_fn = lambda: eval_dataset.make_one_shot_iterator().get_next()
 
   return train_input_fn, eval_input_fn
 
@@ -298,8 +299,7 @@ def _get_session_config_from_env_var():
 
 def serving_input_fn():
   string_array = tf.placeholder(tf.string, [None])
-  feature = extract_feature(string_array)
-  return tf.estimator.export.TensorServingInputReceiver(feature, string_array)
+  return tf.estimator.export.TensorServingInputReceiver(string_array, string_array)
 
 def extract_feature(string_array):
   string_array = tf.strings.substr(string_array,0,seq_len)
