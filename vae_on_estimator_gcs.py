@@ -48,11 +48,9 @@ flags.DEFINE_bool("delete_existing", default=False, help="If true, deletes exist
 
 FLAGS = flags.FLAGS
 
-
 def _softplus_inverse(x):
   """Helper which computes the function inverse of `tf.nn.softplus`."""
   return tf.log(tf.math.expm1(x))
-
 
 def make_encoder(activation, latent_size, base_depth):
   """Creates the encoder function.
@@ -91,7 +89,6 @@ def make_encoder(activation, latent_size, base_depth):
       name="code")
 
   return encoder
-
 
 def make_decoder(activation, latent_size, output_shape, base_depth):
   """Creates the decoder function.
@@ -137,7 +134,6 @@ def make_decoder(activation, latent_size, output_shape, base_depth):
                            name="image")
 
   return decoder
-
 
 def make_mixture_prior(latent_size, mixture_components):
   """Creates the mixture of Gaussians prior distribution.
@@ -261,36 +257,9 @@ def model_fn(features, labels, mode, params, config):
     export_outputs=export_outputs,
   )
 
-def convert_string_to_onehot(value):
-  instance_length = min(seq_len, len(value))
-  bool_arr = np.zeros((seq_len, enc_size), dtype=bool)
-  for i in range(instance_length) :
-    unicode = value[i]
-    if unicode < enc_size :
-      bool_arr[i][unicode] = True
-  return bool_arr
-
 def static_nlog_dataset(data_dir, file_name):
   dataset = tf.data.TextLineDataset(data_dir + '/' + file_name)
-  str_to_arr = lambda string: convert_string_to_onehot(string)
-
-  def _parser(s):
-    booltensor = tf.py_func(str_to_arr, [s], tf.bool)
-    reshaped = tf.reshape(booltensor, IMAGE_SHAPE)
-    return tf.to_float(reshaped), tf.constant(0, tf.int32)
-
-  return dataset.map(_parser)
-
-def build_fake_input_fns(batch_size):
-  """Builds fake MNIST-style data for unit testing."""
-  dataset = tf.data.Dataset.from_tensor_slices(
-    np.random.rand(batch_size, *IMAGE_SHAPE).astype("float32")).map(
-    lambda row: (row, 0)).batch(batch_size)
-
-  train_input_fn = lambda: dataset.repeat().make_one_shot_iterator().get_next()
-  eval_input_fn = lambda: dataset.make_one_shot_iterator().get_next()
-  return train_input_fn, eval_input_fn
-
+  return dataset
 
 def build_input_fns(data_dir, batch_size):
   """Builds an Iterator switching between train and heldout data."""
@@ -298,12 +267,12 @@ def build_input_fns(data_dir, batch_size):
   # Build an iterator over training batches.
   training_dataset = static_nlog_dataset(data_dir, 'globalsignin_devicemodel_train')
   training_dataset = training_dataset.shuffle(1000).repeat().batch(batch_size)
-  train_input_fn = lambda: training_dataset.make_one_shot_iterator().get_next()
+  train_input_fn = lambda: extract_feature(training_dataset.make_one_shot_iterator().get_next())
 
   # Build an iterator over the heldout set.
   eval_dataset = static_nlog_dataset(data_dir, 'globalsignin_devicemodel_eval')
   eval_dataset = eval_dataset.batch(batch_size)
-  eval_input_fn = lambda: eval_dataset.make_one_shot_iterator().get_next()
+  eval_input_fn = lambda: extract_feature(eval_dataset.make_one_shot_iterator().get_next())
 
   return train_input_fn, eval_input_fn
 
@@ -329,13 +298,18 @@ def _get_session_config_from_env_var():
 
 def serving_input_fn():
   string_array = tf.placeholder(tf.string, [None])
+  feature = extract_feature(string_array)
+  return tf.estimator.export.TensorServingInputReceiver(feature, string_array)
+
+def extract_feature(string_array):
+  string_array = tf.strings.substr(string_array,0,seq_len)
   split_stensor = tf.string_split(string_array, delimiter="")
   split_values = split_stensor.values
   unicode_values = tf.map_fn(lambda x: tf.io.decode_raw(x, tf.uint8)[0], split_values, dtype=tf.uint8)
-  unicode_tensor = tf.sparse_to_dense(split_stensor.indices, split_stensor.dense_shape, unicode_values, default_value=-1)
+  unicode_tensor = tf.sparse_to_dense(split_stensor.indices, [split_stensor.dense_shape[0], seq_len], unicode_values, default_value=-1)
   encoded_tensor = tf.map_fn(lambda x: tf.one_hot(x, enc_size), unicode_tensor, dtype=tf.float32)
-  reshaped_tensor = tf.reshape(encoded_tensor, [tf.shape(encoded_tensor)[0]] + IMAGE_SHAPE)
-  return tf.estimator.export.TensorServingInputReceiver(reshaped_tensor, string_array)
+  reshaped_tensor = tf.map_fn(lambda x: tf.reshape(x, IMAGE_SHAPE), encoded_tensor)
+  return reshaped_tensor
 
 def main(argv):
   del argv  # unused
@@ -347,11 +321,7 @@ def main(argv):
     tf.gfile.DeleteRecursively(FLAGS.model_dir)
   tf.gfile.MakeDirs(FLAGS.model_dir)
 
-  if FLAGS.fake_data:
-    train_input_fn, eval_input_fn = build_fake_input_fns(FLAGS.batch_size)
-  else:
-    train_input_fn, eval_input_fn = build_input_fns(FLAGS.data_dir,
-                                                    FLAGS.batch_size)
+  train_input_fn, eval_input_fn = build_input_fns(FLAGS.data_dir, FLAGS.batch_size)
 
   train_spec = tf.estimator.TrainSpec(
     train_input_fn, max_steps=FLAGS.max_steps)
