@@ -328,8 +328,14 @@ def _get_session_config_from_env_var():
   return None
 
 def serving_input_fn():
-  feature_placeholders = tf.placeholder(tf.float32, [None] + IMAGE_SHAPE)
-  return tf.estimator.export.TensorServingInputReceiver(feature_placeholders, feature_placeholders)
+  string_array = tf.placeholder(tf.string, [None])
+  split_stensor = tf.string_split(string_array, delimiter="")
+  split_values = split_stensor.values
+  unicode_values = tf.map_fn(lambda x: tf.io.decode_raw(x, tf.uint8)[0], split_values, dtype=tf.uint8)
+  unicode_tensor = tf.sparse_to_dense(split_stensor.indices, split_stensor.dense_shape, unicode_values, default_value=-1)
+  encoded_tensor = tf.map_fn(lambda x: tf.one_hot(x, enc_size), unicode_tensor, dtype=tf.float32)
+  reshaped_tensor = tf.reshape(encoded_tensor, [tf.shape(encoded_tensor)[0]] + IMAGE_SHAPE)
+  return tf.estimator.export.TensorServingInputReceiver(reshaped_tensor, string_array)
 
 def main(argv):
   del argv  # unused
