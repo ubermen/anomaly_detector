@@ -242,7 +242,7 @@ def model_fn(features, labels, mode, params, config):
 
   prediction = {
     'value' : raws,
-    'anomaly_score' : distortion
+    'anomaly_score' : avg_distortion
   }
 
   export_outputs = {
