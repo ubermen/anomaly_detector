@@ -190,15 +190,15 @@ def model_fn(features, labels, mode, params, config):
                          params["base_depth"])
   latent_prior = make_mixture_prior(params["latent_size"],
                                     params["mixture_components"])
-  raws = features
-  features = extract_feature(features)
 
-  approx_posterior = encoder(features)
+  features_encoded = extract_feature(features)
+
+  approx_posterior = encoder(features_encoded)
   approx_posterior_sample = approx_posterior.sample(params["n_samples"])
   decoder_likelihood = decoder(approx_posterior_sample)
 
   # `distortion` is just the negative log likelihood.
-  distortion = -decoder_likelihood.log_prob(features)
+  distortion = -decoder_likelihood.log_prob(features_encoded)
   avg_distortion = tf.reduce_mean(distortion)
   tf.summary.scalar("distortion", avg_distortion)
 
@@ -241,8 +241,8 @@ def model_fn(features, labels, mode, params, config):
   }
 
   prediction = {
-    'value' : raws,
-    'anomaly_score' : avg_distortion
+    'value' : tf.reshape(features, [-1]),
+    'anomaly_score' : tf.reshape(avg_distortion, [-1])
   }
 
   export_outputs = {
