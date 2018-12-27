@@ -17,7 +17,7 @@ import tensorflow as tf
 
 tfd = tf.contrib.distributions
 
-seq_len = 28
+seq_len = 16
 enc_size = 128
 IMAGE_SHAPE = [seq_len, enc_size, 1]
 
