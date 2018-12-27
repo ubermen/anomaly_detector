@@ -66,9 +66,9 @@ def make_encoder(activation, latent_size, base_depth):
     tf.keras.layers.Conv2D, padding="SAME", activation=activation)
 
   encoder_net = tf.keras.Sequential([
-    conv(base_depth, 5, 1),
+    #conv(base_depth, 5, 1),
     conv(base_depth, 5, 2),
-    conv(2 * base_depth, 5, 1),
+    #conv(2 * base_depth, 5, 1),
     conv(2 * base_depth, 5, 2),
     conv(4 * latent_size, (int(seq_len/4), int(enc_size/4)), padding="VALID"),
     tf.keras.layers.Flatten(),
@@ -77,15 +77,11 @@ def make_encoder(activation, latent_size, base_depth):
 
   def encoder(images):
     images = 2 * tf.cast(images, dtype=tf.float32) - 1
-    try :
-      net = encoder_net(images)
-    except IndexError :
-      raise Exception("[debug] tensor shape = ", tf.shape(images))
+    net = encoder_net(images)
 
     return tfd.MultivariateNormalDiag(
       loc=net[..., :latent_size],
-      scale_diag=tf.nn.softplus(net[..., latent_size:] +
-                                _softplus_inverse(1.0)),
+      scale_diag=tf.nn.softplus(net[..., latent_size:] + _softplus_inverse(1.0)),
       name="code")
 
   return encoder
@@ -108,11 +104,11 @@ def make_decoder(activation, latent_size, output_shape, base_depth):
 
   decoder_net = tf.keras.Sequential([
     deconv(2 * base_depth, (int(seq_len/4), int(enc_size/4)), padding="VALID"),
-    deconv(2 * base_depth, 5),
+    #deconv(2 * base_depth, 5),
     deconv(2 * base_depth, 5, 2),
-    deconv(base_depth, 5),
+    #deconv(base_depth, 5),
     deconv(base_depth, 5, 2),
-    deconv(base_depth, 5),
+    #deconv(base_depth, 5),
     conv(output_shape[-1], 5, activation=None),
   ])
 
@@ -194,60 +190,77 @@ def model_fn(features, labels, mode, params, config):
   features_encoded = extract_feature(features)
 
   approx_posterior = encoder(features_encoded)
-  approx_posterior_sample = approx_posterior.sample(params["n_samples"])
-  decoder_likelihood = decoder(approx_posterior_sample)
 
-  # `distortion` is just the negative log likelihood.
-  distortion = -decoder_likelihood.log_prob(features_encoded)
-  avg_distortion = tf.reduce_mean(distortion)
-  tf.summary.scalar("distortion", avg_distortion)
+  if mode == tf.estimator.ModeKeys.PREDICT :
 
-  if params["analytic_kl"]:
-    rate = tfd.kl_divergence(approx_posterior, latent_prior)
-  else:
-    rate = (approx_posterior.log_prob(approx_posterior_sample)
-            - latent_prior.log_prob(approx_posterior_sample))
-  avg_rate = tf.reduce_mean(rate)
-  tf.summary.scalar("rate", avg_rate)
+    approx_posterior_sample = approx_posterior.sample()
+    decoder_likelihood = decoder(approx_posterior_sample)
+    distortion = -decoder_likelihood.log_prob(features_encoded)
 
-  elbo_local = -(rate + distortion)
+    loss = None
+    train_op = None
+    eval_metric_ops = None
 
-  elbo = tf.reduce_mean(elbo_local)
+    prediction = {
+      '_0' : features,
+      '_1' : distortion
+    }
 
-  tf.summary.scalar("elbo", elbo)
+    export_outputs = {
+      'prediction': tf.estimator.export.PredictOutput(prediction)
+    }
 
-  importance_weighted_elbo = tf.reduce_mean(
-    tf.reduce_logsumexp(elbo_local, axis=0) -
-    tf.log(tf.to_float(params["n_samples"])))
-  tf.summary.scalar("elbo/importance_weighted", importance_weighted_elbo)
+  else :
 
-  # Decode samples from the prior for visualization.
-  random_image = decoder(latent_prior.sample(16))
+    approx_posterior_sample = approx_posterior.sample(params["n_samples"])
 
-  # Perform variational inference by minimizing the -ELBO.
-  global_step = tf.train.get_or_create_global_step()
-  learning_rate = tf.train.cosine_decay(params["learning_rate"], global_step,
-                                        params["max_steps"])
-  tf.summary.scalar("learning_rate", learning_rate)
-  optimizer = tf.train.AdamOptimizer(learning_rate)
+    decoder_likelihood = decoder(approx_posterior_sample)
 
-  loss = -elbo
-  train_op = optimizer.minimize(loss, global_step=global_step)
-  eval_metric_ops={
-    "elbo": tf.metrics.mean(elbo),
-    "elbo/importance_weighted": tf.metrics.mean(importance_weighted_elbo),
-    "rate": tf.metrics.mean(avg_rate),
-    "distortion": tf.metrics.mean(avg_distortion),
-  }
+    # `distortion` is just the negative log likelihood.
+    distortion = -decoder_likelihood.log_prob(features_encoded)
+    avg_distortion = tf.reduce_mean(distortion)
+    tf.summary.scalar("distortion", avg_distortion)
 
-  prediction = {
-    'value' : tf.reshape(features, [-1]),
-    'anomaly_score' : tf.reshape(avg_distortion, [-1])
-  }
+    if params["analytic_kl"]:
+      rate = tfd.kl_divergence(approx_posterior, latent_prior)
+    else:
+      rate = (approx_posterior.log_prob(approx_posterior_sample)
+              - latent_prior.log_prob(approx_posterior_sample))
+    avg_rate = tf.reduce_mean(rate)
+    tf.summary.scalar("rate", avg_rate)
 
-  export_outputs = {
-    'prediction': tf.estimator.export.PredictOutput(prediction)
-  }
+    elbo_local = -(rate + distortion)
+
+    elbo = tf.reduce_mean(elbo_local)
+
+    tf.summary.scalar("elbo", elbo)
+
+    importance_weighted_elbo = tf.reduce_mean(
+      tf.reduce_logsumexp(elbo_local, axis=0) -
+      tf.log(tf.to_float(params["n_samples"])))
+    tf.summary.scalar("elbo/importance_weighted", importance_weighted_elbo)
+
+    # Decode samples from the prior for visualization.
+    random_image = decoder(latent_prior.sample(16))
+
+    # Perform variational inference by minimizing the -ELBO.
+    global_step = tf.train.get_or_create_global_step()
+    learning_rate = tf.train.cosine_decay(params["learning_rate"], global_step,
+                                          params["max_steps"])
+    tf.summary.scalar("learning_rate", learning_rate)
+    optimizer = tf.train.AdamOptimizer(learning_rate)
+
+    loss = -elbo
+    train_op = optimizer.minimize(loss, global_step=global_step)
+    eval_metric_ops={
+      "elbo": tf.metrics.mean(elbo),
+      "elbo/importance_weighted": tf.metrics.mean(importance_weighted_elbo),
+      "rate": tf.metrics.mean(avg_rate),
+      "distortion": tf.metrics.mean(avg_distortion),
+    }
+
+    prediction = None
+    export_outputs = None
 
   return tf.estimator.EstimatorSpec(
     mode=mode,
@@ -306,7 +319,8 @@ def extract_feature(string_array):
   split_stensor = tf.string_split(string_array, delimiter="")
   split_values = split_stensor.values
   unicode_values = tf.map_fn(lambda x: tf.io.decode_raw(x, tf.uint8)[0], split_values, dtype=tf.uint8)
-  unicode_tensor = tf.sparse_to_dense(split_stensor.indices, [split_stensor.dense_shape[0], seq_len], unicode_values, default_value=-1)
+  unicode_values = tf.map_fn(lambda x: tf.cond(tf.math.less(x, enc_size), lambda: x, lambda: tf.constant(32, dtype=tf.uint8)), unicode_values)
+  unicode_tensor = tf.sparse_to_dense(split_stensor.indices, [tf.shape(string_array)[0], seq_len], unicode_values, default_value=-1)
   encoded_tensor = tf.map_fn(lambda x: tf.one_hot(x, enc_size), unicode_tensor, dtype=tf.float32)
   reshaped_tensor = tf.map_fn(lambda x: tf.reshape(x, IMAGE_SHAPE), encoded_tensor)
   return reshaped_tensor
