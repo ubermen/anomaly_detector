@@ -118,13 +118,8 @@ def make_decoder(activation, latent_size, output_shape, base_depth):
     # use with a convolutional decoder network.
     codes = tf.reshape(codes, (-1, 1, 1, latent_size))
     logits = decoder_net(codes)
-    try :
-      logits = tf.reshape(
-        logits, shape=tf.concat([original_shape[:-1], output_shape], axis=0))
-    except ValueError :
-      raise Exception('original_shape=' + str(original_shape) +
-                      '\noutput_shape=' + str(output_shape)
-                      )
+    logits = tf.reshape(logits, shape=tf.concat([original_shape[:-1], output_shape], axis=0))
+
     return tfd.Independent(tfd.Bernoulli(logits=logits),
                            reinterpreted_batch_ndims=len(output_shape),
                            name="image")
