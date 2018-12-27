@@ -182,15 +182,15 @@ def model_fn(features, labels, mode, params, config):
   latent_prior = make_mixture_prior(params["latent_size"],
                                     params["mixture_components"])
 
-  features_encoded = extract_feature(features)
+  features_preprocessed = preprocess(features)
 
-  approx_posterior = encoder(features_encoded)
+  approx_posterior = encoder(features_preprocessed)
 
   if mode == tf.estimator.ModeKeys.PREDICT :
 
     approx_posterior_sample = approx_posterior.sample()
     decoder_likelihood = decoder(approx_posterior_sample)
-    distortion = -decoder_likelihood.log_prob(features_encoded)
+    distortion = -decoder_likelihood.log_prob(features_preprocessed)
 
     loss = None
     train_op = None
@@ -212,7 +212,7 @@ def model_fn(features, labels, mode, params, config):
     decoder_likelihood = decoder(approx_posterior_sample)
 
     # `distortion` is just the negative log likelihood.
-    distortion = -decoder_likelihood.log_prob(features_encoded)
+    distortion = -decoder_likelihood.log_prob(features_preprocessed)
     avg_distortion = tf.reduce_mean(distortion)
     tf.summary.scalar("distortion", avg_distortion)
 
@@ -309,7 +309,7 @@ def serving_input_fn():
   string_array = tf.placeholder(tf.string, [None])
   return tf.estimator.export.TensorServingInputReceiver(string_array, string_array)
 
-def extract_feature(string_array):
+def preprocess(string_array):
   string_array = tf.strings.substr(string_array,0,seq_len)
   split_stensor = tf.string_split(string_array, delimiter="")
   split_values = split_stensor.values
