@@ -20,11 +20,14 @@ tfd = tf.contrib.distributions
 seq_len = 16
 enc_size = 128
 IMAGE_SHAPE = [seq_len, enc_size, 1]
+kernel_height = max(2, int(seq_len/2))
+kernel_width = max(2, int(enc_size/2))
+kernel = (kernel_height, kernel_width)
 
 flags.DEFINE_float("learning_rate", default=0.0001, help="Initial learning rate.")
 flags.DEFINE_integer("max_steps", default=1001, help="Number of training steps to run.")
-flags.DEFINE_integer("latent_size", default=16, help="Number of dimensions in the latent code (z).")
-flags.DEFINE_integer("base_depth", default=32, help="Base depth for layers.")
+flags.DEFINE_integer("latent_size", default=8, help="Number of dimensions in the latent code (z).")
+flags.DEFINE_integer("base_depth", default=8, help="Base depth for layers.")
 flags.DEFINE_string("activation", default="leaky_relu", help="Activation function for all hidden layers.")
 flags.DEFINE_integer("batch_size", default=32, help="Batch size.")
 flags.DEFINE_integer("n_samples", default=16, help="Number of samples to use in encoding.")
@@ -66,10 +69,10 @@ def make_encoder(activation, latent_size, base_depth):
     tf.keras.layers.Conv2D, padding="SAME", activation=activation)
 
   encoder_net = tf.keras.Sequential([
-    #conv(base_depth, 5, 1),
-    conv(base_depth, 5, 2),
-    #conv(2 * base_depth, 5, 1),
-    conv(2 * base_depth, 5, 2),
+    #conv(base_depth, kernel, 1),
+    conv(base_depth, kernel, 2),
+    #conv(2 * base_depth, kernel, 1),
+    conv(2 * base_depth, kernel, 2),
     conv(4 * latent_size, (int(seq_len/4), int(enc_size/4)), padding="VALID"),
     tf.keras.layers.Flatten(),
     tf.keras.layers.Dense(2 * latent_size, activation=None),
@@ -104,11 +107,11 @@ def make_decoder(activation, latent_size, output_shape, base_depth):
 
   decoder_net = tf.keras.Sequential([
     deconv(2 * base_depth, (int(seq_len/4), int(enc_size/4)), padding="VALID"),
-    #deconv(2 * base_depth, 5),
-    deconv(2 * base_depth, 5, 2),
-    #deconv(base_depth, 5),
-    deconv(base_depth, 5, 2),
-    #deconv(base_depth, 5),
+    #deconv(2 * base_depth, kernel),
+    deconv(2 * base_depth, kernel, 2),
+    #deconv(base_depth, kernel),
+    deconv(base_depth, kernel, 2),
+    #deconv(base_depth, kernel),
     conv(output_shape[-1], 5, activation=None),
   ])
 
