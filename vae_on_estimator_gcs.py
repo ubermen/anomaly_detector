@@ -20,24 +20,29 @@ tfd = tf.contrib.distributions
 seq_len = 16
 enc_size = 128
 IMAGE_SHAPE = [seq_len, enc_size, 1]
+
 kernel_height = max(2, int(seq_len/2))
 kernel_width = max(2, int(enc_size/2))
 kernel = (kernel_height, kernel_width)
 
+stride_vertical = 1
+stride_horizontal = 2
+stride = (stride_vertical, stride_horizontal)
+
 flags.DEFINE_float("learning_rate", default=0.0001, help="Initial learning rate.")
 flags.DEFINE_integer("max_steps", default=1001, help="Number of training steps to run.")
-flags.DEFINE_integer("latent_size", default=8, help="Number of dimensions in the latent code (z).")
+flags.DEFINE_integer("latent_size", default=2, help="Number of dimensions in the latent code (z).")
 flags.DEFINE_integer("base_depth", default=8, help="Base depth for layers.")
 flags.DEFINE_string("activation", default="leaky_relu", help="Activation function for all hidden layers.")
-flags.DEFINE_integer("batch_size", default=32, help="Batch size.")
+flags.DEFINE_integer("batch_size", default=100, help="Batch size.")
 flags.DEFINE_integer("n_samples", default=16, help="Number of samples to use in encoding.")
-flags.DEFINE_integer("mixture_components", default=100,
+flags.DEFINE_integer("mixture_components", default=1,
                      help="Number of mixture components to use in the prior. Each component is "
                           "a diagonal normal distribution. The parameters of the components are "
                           "intialized randomly, and then learned along with the rest of the "
                           "parameters. If `analytic_kl` is True, `mixture_components` must be "
                           "set to `1`.")
-flags.DEFINE_bool("analytic_kl", default=False,
+flags.DEFINE_bool("analytic_kl", default=True,
                   help="Whether or not to use the analytic version of the KL. When set to "
                        "False the E_{Z~q(Z|X)}[log p(Z)p(X|Z) - log q(Z|X)] form of the ELBO "
                        "will be used. Otherwise the -KL(q(Z|X) || p(Z)) + "
@@ -70,10 +75,10 @@ def make_encoder(activation, latent_size, base_depth):
 
   encoder_net = tf.keras.Sequential([
     #conv(base_depth, kernel, 1),
-    conv(base_depth, kernel, 2),
+    conv(base_depth, kernel, stride),
     #conv(2 * base_depth, kernel, 1),
-    conv(2 * base_depth, kernel, 2),
-    conv(4 * latent_size, (int(seq_len/4), int(enc_size/4)), padding="VALID"),
+    conv(2 * base_depth, kernel, stride),
+    conv(4 * latent_size, (int(seq_len/stride_vertical/stride_vertical), int(enc_size/stride_horizontal/stride_horizontal)), padding="VALID"),
     tf.keras.layers.Flatten(),
     tf.keras.layers.Dense(2 * latent_size, activation=None),
   ])
@@ -106,11 +111,11 @@ def make_decoder(activation, latent_size, output_shape, base_depth):
     tf.keras.layers.Conv2D, padding="SAME", activation=activation)
 
   decoder_net = tf.keras.Sequential([
-    deconv(2 * base_depth, (int(seq_len/4), int(enc_size/4)), padding="VALID"),
+    deconv(2 * base_depth, (int(seq_len/stride_vertical/stride_vertical), int(enc_size/stride_horizontal/stride_horizontal)), padding="VALID"),
     #deconv(2 * base_depth, kernel),
-    deconv(2 * base_depth, kernel, 2),
+    deconv(2 * base_depth, kernel, stride),
     #deconv(base_depth, kernel),
-    deconv(base_depth, kernel, 2),
+    deconv(base_depth, kernel, stride),
     #deconv(base_depth, kernel),
     conv(output_shape[-1], 5, activation=None),
   ])
@@ -239,7 +244,7 @@ def model_fn(features, labels, mode, params, config):
     tf.summary.scalar("elbo/importance_weighted", importance_weighted_elbo)
 
     # Decode samples from the prior for visualization.
-    random_image = decoder(latent_prior.sample(16))
+    # random_image = decoder(latent_prior.sample(16))
 
     # Perform variational inference by minimizing the -ELBO.
     global_step = tf.train.get_or_create_global_step()
@@ -270,7 +275,7 @@ def model_fn(features, labels, mode, params, config):
   )
 
 def static_nlog_dataset(data_dir, file_name):
-  dataset = tf.data.TextLineDataset(data_dir + '/' + file_name)
+  dataset = tf.data.TextLineDataset(data_dir + '/' + file_name).skip(1)
   return dataset
 
 def build_input_fns(data_dir, batch_size):
@@ -278,7 +283,7 @@ def build_input_fns(data_dir, batch_size):
 
   # Build an iterator over training batches.
   training_dataset = static_nlog_dataset(data_dir, 'globalsignin_devicemodel_train')
-  training_dataset = training_dataset.shuffle(1000).repeat().batch(batch_size)
+  training_dataset = training_dataset.shuffle(10000).repeat().batch(batch_size)
   train_input_fn = lambda: training_dataset.make_one_shot_iterator().get_next()
 
   # Build an iterator over the heldout set.
@@ -317,7 +322,8 @@ def preprocess(string_array):
   split_stensor = tf.string_split(string_array, delimiter="")
   split_values = split_stensor.values
   unicode_values = tf.map_fn(lambda x: tf.io.decode_raw(x, tf.uint8)[0], split_values, dtype=tf.uint8)
-  unicode_values = tf.map_fn(lambda x: tf.cond(tf.math.less(x, enc_size), lambda: x, lambda: tf.constant(32, dtype=tf.uint8)), unicode_values)
+  # use below code when replace 128+ codes as space
+  #unicode_values = tf.map_fn(lambda x: tf.cond(tf.math.less(x, enc_size), lambda: x, lambda: tf.constant(32, dtype=tf.uint8)), unicode_values)
   unicode_tensor = tf.sparse_to_dense(split_stensor.indices, [tf.shape(string_array)[0], seq_len], unicode_values, default_value=-1)
   encoded_tensor = tf.map_fn(lambda x: tf.one_hot(x, enc_size), unicode_tensor, dtype=tf.float32)
   reshaped_tensor = tf.map_fn(lambda x: tf.reshape(x, IMAGE_SHAPE), encoded_tensor)
@@ -365,5 +371,4 @@ if __name__ == "__main__":
   args = parser.parse_args()
   FLAGS.data_dir = "gs://bigus/data"
   FLAGS.model_dir = args.job_dir
-  FLAGS.max_steps = 101
   tf.app.run()
