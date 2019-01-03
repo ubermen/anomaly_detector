@@ -36,8 +36,6 @@ flags.DEFINE_string("model_dir", default=os.path.join(os.getenv("TEST_TMPDIR", "
 flags.DEFINE_integer("viz_steps", default=100, help="Frequency at which to save visualizations.")
 flags.DEFINE_integer("batch_size", default=32, help="Batch size.")
 flags.DEFINE_string("activation", default="leaky_relu", help="Activation function for all hidden layers.")
-flags.DEFINE_string("encoder_id", default="lqad_encoder", help="")
-flags.DEFINE_string("decoder_id", default="lqad_decoder", help="")
 
 FLAGS = flags.FLAGS
 
@@ -75,8 +73,10 @@ class VariationalAutoencoder(object) :
     self.final_conv_shape = [self.conv_result_height, self.conv_result_width, self.conv2_filter]
     print('final_conv',self.final_conv_shape)
 
-    self.make_encoder = tf.make_template(FLAGS.encoder_id, self.make_encoder)
-    self.make_decoder = tf.make_template(FLAGS.decoder_id, self.make_decoder)
+    self.encoder_id = 'encoder_' + str(uuid.uuid4())
+    self.decoder_id = 'decoder_' + str(uuid.uuid4())
+    self.make_encoder = tf.make_template(self.encoder_id, self.make_encoder)
+    self.make_decoder = tf.make_template(self.decoder_id, self.make_decoder)
 
   def make_prior(self):
     code_size = self.code_size
