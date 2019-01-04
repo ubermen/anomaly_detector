@@ -35,7 +35,7 @@ flags.DEFINE_integer("max_steps", default=3001, help="Number of training steps t
 flags.DEFINE_string("data_dir", default=os.path.join(os.getenv("TEST_TMPDIR", "/tmp"), "vae/data"), help="Directory where data is stored (if using real data).")
 flags.DEFINE_string("model_dir", default=os.path.join(os.getenv("TEST_TMPDIR", "/tmp"), "vae/"), help="Directory to put the model's fit.")
 flags.DEFINE_integer("viz_steps", default=100, help="Frequency at which to save visualizations.")
-flags.DEFINE_integer("batch_size", default=128, help="Batch size.")
+flags.DEFINE_integer("batch_size", default=100, help="Batch size.")
 flags.DEFINE_string("activation", default="leaky_relu", help="Activation function for all hidden layers.")
 flags.DEFINE_string("encoder_id", default="lqad_encoder", help="")
 flags.DEFINE_string("decoder_id", default="lqad_decoder", help="")
@@ -198,7 +198,7 @@ def build_input_fns(data_dir, batch_size):
 
   # Build an iterator over training batches.
   training_dataset = static_nlog_dataset(data_dir, 'globalsignin_devicemodel_train')
-  training_dataset = training_dataset.shuffle(batch_size*10).repeat().batch(batch_size)
+  training_dataset = training_dataset.shuffle(10000).repeat().batch(batch_size)
   train_input_fn = lambda: training_dataset.make_one_shot_iterator().get_next()
 
   # Build an iterator over the heldout set.
