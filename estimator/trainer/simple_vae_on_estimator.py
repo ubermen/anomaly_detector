@@ -31,7 +31,7 @@ stride_horizontal = 2
 stride = (stride_vertical, stride_horizontal)
 
 flags.DEFINE_float("learning_rate", default=0.0001, help="Initial learning rate.")
-flags.DEFINE_integer("max_steps", default=3001, help="Number of training steps to run.")
+flags.DEFINE_integer("max_steps", default=1001, help="Number of training steps to run.")
 flags.DEFINE_string("data_dir", default=os.path.join(os.getenv("TEST_TMPDIR", "/tmp"), "vae/data"), help="Directory where data is stored (if using real data).")
 flags.DEFINE_string("model_dir", default=os.path.join(os.getenv("TEST_TMPDIR", "/tmp"), "vae/"), help="Directory to put the model's fit.")
 flags.DEFINE_integer("viz_steps", default=100, help="Frequency at which to save visualizations.")
