@@ -30,19 +30,21 @@ stride_vertical = 1
 stride_horizontal = 2
 stride = (stride_vertical, stride_horizontal)
 
+flags.DEFINE_float("learning_rate", default=0.0001, help="Initial learning rate.")
 flags.DEFINE_integer("max_steps", default=1001, help="Number of training steps to run.")
 flags.DEFINE_string("data_dir", default=os.path.join(os.getenv("TEST_TMPDIR", "/tmp"), "vae/data"), help="Directory where data is stored (if using real data).")
 flags.DEFINE_string("model_dir", default=os.path.join(os.getenv("TEST_TMPDIR", "/tmp"), "vae/"), help="Directory to put the model's fit.")
 flags.DEFINE_integer("viz_steps", default=100, help="Frequency at which to save visualizations.")
-flags.DEFINE_integer("batch_size", default=32, help="Batch size.")
+flags.DEFINE_integer("batch_size", default=1024, help="Batch size.")
 flags.DEFINE_string("activation", default="leaky_relu", help="Activation function for all hidden layers.")
+flags.DEFINE_string("encoder_id", default="lqad_encoder", help="")
+flags.DEFINE_string("decoder_id", default="lqad_decoder", help="")
 
 FLAGS = flags.FLAGS
 
 class VariationalAutoencoder(object) :
   def __init__(self, sequence_length, encoding_size, code_size=2, kernel=None, stride=None, conv1_filter=16, conv2_filter=32) :
     self.code_size = code_size
-    print('latent_size',self.code_size)
     self.sequence_length = sequence_length
     self.encoding_size = encoding_size
     self.data_shape = [sequence_length, encoding_size]
@@ -55,8 +57,6 @@ class VariationalAutoencoder(object) :
       kernel_width = max(2, int(self.encoding_size/2))
       self.kernel = (kernel_height, kernel_width)
 
-    print('kernel',self.kernel)
-
     if stride is not None :
       self.stride = stride
     else :
@@ -64,19 +64,14 @@ class VariationalAutoencoder(object) :
       stride_horizontal = 2
       self.stride = (stride_vertical, stride_horizontal)
 
-    print('stride',self.stride)
-
     self.conv1_filter = conv1_filter
     self.conv2_filter = conv2_filter
     self.conv_result_height = int(sequence_length / stride_vertical / stride_vertical)
     self.conv_result_width = int(encoding_size / stride_horizontal / stride_horizontal)
     self.final_conv_shape = [self.conv_result_height, self.conv_result_width, self.conv2_filter]
-    print('final_conv',self.final_conv_shape)
 
-    self.encoder_id = 'encoder_' + str(uuid.uuid4())
-    self.decoder_id = 'decoder_' + str(uuid.uuid4())
-    self.make_encoder = tf.make_template(self.encoder_id, self.make_encoder)
-    self.make_decoder = tf.make_template(self.decoder_id, self.make_decoder)
+    self.make_encoder = tf.make_template(FLAGS.encoder_id, self.make_encoder)
+    self.make_decoder = tf.make_template(FLAGS.decoder_id, self.make_decoder)
 
   def make_prior(self):
     code_size = self.code_size
@@ -98,10 +93,6 @@ class VariationalAutoencoder(object) :
 
     conv1 = tf.layers.conv2d(x, conv1_filter, kernel, stride, activation=tf.nn.relu, padding='same', kernel_initializer=tf.contrib.layers.xavier_initializer_conv2d(),bias_initializer=tf.contrib.layers.xavier_initializer_conv2d())
     conv2 = tf.layers.conv2d(conv1, conv2_filter, kernel, stride, activation=tf.nn.relu, padding='same', kernel_initializer=tf.contrib.layers.xavier_initializer_conv2d(),bias_initializer=tf.contrib.layers.xavier_initializer_conv2d())
-
-    print('input',x)
-    print('output',conv1)
-    print('output',conv2)
 
     # Flatten the data to a 1-D vector for the fully connected layer
     x = tf.contrib.layers.flatten(conv2)
@@ -129,12 +120,7 @@ class VariationalAutoencoder(object) :
     conv2 = tf.layers.conv2d_transpose(x, conv1_filter, kernel, stride, padding='same')
     conv1 = tf.layers.conv2d_transpose(conv2, 1, kernel, stride, padding='same')
 
-    print('d_input',x)
-    print('d_output',conv2)
-    print('d_output',conv1)
-
     logit = tf.reshape(conv1, [-1] + data_shape)
-    print('d_output',logit)
     return tfd.Independent(tfd.Bernoulli(logit), 2)
 
 def model_fn(features, labels, mode, params, config):
@@ -180,7 +166,8 @@ def model_fn(features, labels, mode, params, config):
     # Define the loss.
     divergence = tfd.kl_divergence(posterior, prior)
     elbo = tf.reduce_mean(likelihood - divergence)
-    optimizer = tf.train.AdamOptimizer(learning_rate=0.001)
+    learning_rate = tf.train.cosine_decay(params["learning_rate"], global_step, params["max_steps"])
+    optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate)
     loss = -elbo
     train_op = optimizer.minimize(loss, global_step=global_step)
 
@@ -211,7 +198,7 @@ def build_input_fns(data_dir, batch_size):
 
   # Build an iterator over training batches.
   training_dataset = static_nlog_dataset(data_dir, 'globalsignin_devicemodel_train')
-  training_dataset = training_dataset.shuffle(10000).repeat().batch(batch_size)
+  training_dataset = training_dataset.shuffle(batch_size*10).repeat().batch(batch_size)
   train_input_fn = lambda: training_dataset.make_one_shot_iterator().get_next()
 
   # Build an iterator over the heldout set.
