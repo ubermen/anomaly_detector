@@ -21,5 +21,16 @@ __predict__
 ```shell
 JOB_NAME=lqad_prediction_44
 TEST_PATH=gs://bigus/data/globalsignin_devicemodel_test
-gcloud ml-engine jobs submit prediction $JOB_NAME -model $MODEL_NAME --version v1 --region $REGION --input-paths $TEST_PATH --output-path $OUTPUT_PATH/predictions --data-format TEXT
+PREDICTION_PATH=$OUTPUT_PATH/predictions
+gcloud ml-engine jobs submit prediction $JOB_NAME -model $MODEL_NAME --version v1 --region $REGION --input-paths $TEST_PATH --output-path $PREDICTION_PATH --data-format TEXT
+```
+__summary__
+```shell
+gsutil cp $PREDICTION_PATH/prediction.results* .
+cat prediction.results-0000* > total
+sed -i -- 's/{"_1": //g' total
+sed -i -- 's/"}//g' total
+sed -i -- 's/, "_0": "/\t/g' total
+sed -i -- 's/, "_0": /\t/g' total
+sort -n total > sorted
 ```
