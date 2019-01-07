@@ -15,8 +15,9 @@ import uuid
 from absl import flags
 import argparse
 import tensorflow as tf
+import tensorflow_probability as tfp
 
-tfd = tf.contrib.distributions
+tfd = tfp.distributions
 
 seq_len = 16
 enc_size = 128
@@ -31,11 +32,10 @@ stride_horizontal = 2
 stride = (stride_vertical, stride_horizontal)
 
 flags.DEFINE_float("learning_rate", default=0.0001, help="Initial learning rate.")
-flags.DEFINE_integer("max_steps", default=1001, help="Number of training steps to run.")
 flags.DEFINE_string("data_dir", default=os.path.join(os.getenv("TEST_TMPDIR", "/tmp"), "vae/data"), help="Directory where data is stored (if using real data).")
 flags.DEFINE_string("model_dir", default=os.path.join(os.getenv("TEST_TMPDIR", "/tmp"), "vae/"), help="Directory to put the model's fit.")
 flags.DEFINE_integer("viz_steps", default=100, help="Frequency at which to save visualizations.")
-flags.DEFINE_integer("batch_size", default=100, help="Batch size.")
+flags.DEFINE_integer("batch_size", default=32, help="Batch size.")
 flags.DEFINE_string("activation", default="leaky_relu", help="Activation function for all hidden layers.")
 flags.DEFINE_string("encoder_id", default="lqad_encoder", help="")
 flags.DEFINE_string("decoder_id", default="lqad_decoder", help="")
@@ -166,7 +166,7 @@ def model_fn(features, labels, mode, params, config):
     # Define the loss.
     divergence = tfd.kl_divergence(posterior, prior)
     elbo = tf.reduce_mean(likelihood - divergence)
-    learning_rate = tf.train.cosine_decay(params["learning_rate"], global_step, params["max_steps"])
+    learning_rate = params["learning_rate"]
     optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate)
     loss = -elbo
     train_op = optimizer.minimize(loss, global_step=global_step)
@@ -198,7 +198,7 @@ def build_input_fns(data_dir, batch_size):
 
   # Build an iterator over training batches.
   training_dataset = static_nlog_dataset(data_dir, 'train')
-  training_dataset = training_dataset.shuffle(10000).repeat().batch(batch_size)
+  training_dataset = training_dataset.batch(batch_size)
   train_input_fn = lambda: training_dataset.make_one_shot_iterator().get_next()
 
   # Build an iterator over the heldout set.
@@ -250,8 +250,7 @@ def main(argv):
 
   train_input_fn, eval_input_fn = build_input_fns(FLAGS.data_dir, FLAGS.batch_size)
 
-  train_spec = tf.estimator.TrainSpec(
-    train_input_fn, max_steps=FLAGS.max_steps)
+  train_spec = tf.estimator.TrainSpec(train_input_fn)
 
   exporter = tf.estimator.FinalExporter('exporter', serving_input_fn)
 
@@ -261,8 +260,10 @@ def main(argv):
     exporters=[exporter],
     name='lqad-eval')
 
+  #distribution = tf.contrib.distribute.MirroredStrategy()
   run_config = tf.estimator.RunConfig(session_config=_get_session_config_from_env_var())
   run_config = run_config.replace(model_dir=FLAGS.model_dir)
+  #run_config = run_config.replace(train_distribute=distribution)
 
   estimator = tf.estimator.Estimator(
     model_fn,

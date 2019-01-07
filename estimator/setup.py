@@ -1,7 +1,7 @@
 from setuptools import find_packages
 from setuptools import setup
 
-REQUIRED_PACKAGES = ['tensorflow>=1.12.0']
+REQUIRED_PACKAGES = ['tensorflow>=1.12.0','tensorflow_probability']
 
 setup(
   name='trainer',

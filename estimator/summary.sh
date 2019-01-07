@@ -12,10 +12,12 @@ TYPE=summary
 
 OUTPUT=$GS_ROOT/results/$MODEL_NAME/$GAMECODE/$COLNAME/$DATE
 
-gsutil cp $OUTPUT/prediction.results* .
-cat prediction.results-0000* > total
-sed -i -- 's/{"_1": //g' total
-sed -i -- 's/"}//g' total
-sed -i -- 's/, "_0": "/\t/g' total
-sed -i -- 's/, "_0": /\t/g' total
-sort -n total > sorted
+rm -rf summary
+mkdir summary
+gsutil cp $OUTPUT/prediction.results* ./summary/
+cat ./summary/prediction.results-0000* > ./summary/total
+sed -i -- 's/{"_1": //g' ./summary/total
+sed -i -- 's/"}//g' ./summary/total
+sed -i -- 's/, "_0": "/\t/g' ./summary/total
+sed -i -- 's/, "_0": /\t/g' ./summary/total
+sort -n ./summary/total > ./summary/sorted
