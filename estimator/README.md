@@ -36,7 +36,9 @@ sort -n total > sorted
 ```
 __scripts__
 ```shell
-./train.sh lqad_train_34
-./deploy.sh lqad_train_34 lqad_test_00 v1
-./predict.sh lqad_prediction_45 lqad_test_00 v1 gs://bigus/data/globalsignin_devicemodel_test gs://bigus/lqad_train_34/predictions
+./train.sh globalsignin devicemodel 20181004
+./deploy.sh globalsignin devicemodel 20181004
+./test.sh globalsignin devicemodel 20181004
+./predict.sh globalsignin devicemodel 20181004
+./summary.sh globalsignin devicemodel 20181004
 ```
