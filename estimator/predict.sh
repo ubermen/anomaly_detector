@@ -11,10 +11,11 @@ MODEL_NAME=lqad_ia
 TYPE=test
 
 VERSION=_${GAMECODE}_${COLNAME}_${DATE}
+VERSION_LATEST="$(gcloud ml-engine versions list --model=lqad_ia | grep $VERSION | tail -n 1 | cut -d' ' -f1)"
 JOB_NAME=${MODEL_NAME}_${TYPE}_${GAMECODE}_${COLNAME}_${DATE}_${EXEC_TIME}
 
 INPUT=$GS_ROOT/data/$GAMECODE/$COLNAME/$DATE/$TYPE
 OUTPUT=$GS_ROOT/results/$MODEL_NAME/$GAMECODE/$COLNAME/$DATE
 
-gcloud ml-engine jobs submit prediction $JOB_NAME --model $MODEL_NAME --version $VERSION --input-paths $INPUT --output-path $OUTPUT --region $REGION --data-format TEXT
+gcloud ml-engine jobs submit prediction $JOB_NAME --model $MODEL_NAME --version $VERSION_LATEST --input-paths $INPUT --output-path $OUTPUT --region $REGION --data-format TEXT
 gcloud ml-engine jobs stream-logs $JOB_NAME
