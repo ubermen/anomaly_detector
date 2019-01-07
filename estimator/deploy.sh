@@ -1,9 +1,19 @@
 #!/bin/bash
+
+GAMECODE=$1
+COLNAME=$2
+DATE=$3
+EXEC_TIME="$(date +%s)"
+
 REGION=us-central1
-JOB_NAME=$1
-OUTPUT_PATH=gs://bigus/$JOB_NAME
-MODEL_NAME=$2
-VERSION=$3
-EXPORT_PATH=$OUTPUT_PATH/export/exporter/
-MODEL_BINARIES="$(gsutil ls $EXPORT_PATH | tail -n 1)"
+GS_ROOT=gs://bigus/lqad
+MODEL_NAME=lqad_ia
+TYPE=deploy
+
+VERSION=_${GAMECODE}_${COLNAME}_${DATE}
+
+MODEL=$GS_ROOT/models/$MODEL_NAME/$GAMECODE/$COLNAME/$DATE
+MODEL_EXPORTER=$MODEL/export/exporter/
+MODEL_BINARIES="$(gsutil ls $MODEL_EXPORTER | tail -n 1)"
+
 gcloud ml-engine versions create $VERSION --model $MODEL_NAME --origin $MODEL_BINARIES --runtime-version 1.8

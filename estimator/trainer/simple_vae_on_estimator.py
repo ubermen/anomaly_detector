@@ -197,12 +197,12 @@ def build_input_fns(data_dir, batch_size):
   """Builds an Iterator switching between train and heldout data."""
 
   # Build an iterator over training batches.
-  training_dataset = static_nlog_dataset(data_dir, 'globalsignin_devicemodel_train')
+  training_dataset = static_nlog_dataset(data_dir, 'train')
   training_dataset = training_dataset.shuffle(10000).repeat().batch(batch_size)
   train_input_fn = lambda: training_dataset.make_one_shot_iterator().get_next()
 
   # Build an iterator over the heldout set.
-  eval_dataset = static_nlog_dataset(data_dir, 'globalsignin_devicemodel_eval')
+  eval_dataset = static_nlog_dataset(data_dir, 'eval')
   eval_dataset = eval_dataset.batch(batch_size)
   eval_input_fn = lambda: eval_dataset.make_one_shot_iterator().get_next()
 
@@ -274,10 +274,9 @@ def main(argv):
 
 if __name__ == "__main__":
   parser = argparse.ArgumentParser(description='Process data and model path info.')
-  parser.add_argument(
-    '--job-dir',
-    help='GCS location to write checkpoints and export models')
+  parser.add_argument('--job-dir', help='GCS location to write checkpoints and export models')
+  parser.add_argument('--data-dir', help='GCS location from which load data')
   args = parser.parse_args()
-  FLAGS.data_dir = "gs://bigus/data"
   FLAGS.model_dir = args.job_dir
+  FLAGS.data_dir = args.data_dir
   tf.app.run()
