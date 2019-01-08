@@ -252,7 +252,7 @@ def main(argv):
 
   train_spec = tf.estimator.TrainSpec(train_input_fn)
 
-  exporter = tf.estimator.LatestExporter('exporter', serving_input_fn)
+  exporter = tf.estimator.LatestExporter('exporter', serving_input_fn, exports_to_keep=None)
 
   eval_spec = tf.estimator.EvalSpec(
     eval_input_fn,
