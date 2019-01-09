@@ -1,15 +1,10 @@
-# this code is modified version of tensorflow probability example
-# https://github.com/tensorflow/probability/blob/master/tensorflow_probability/examples/vae.py
-
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import functools
 import json
 import os
 import numpy as np
-import uuid
 
 # Dependency imports
 from absl import flags
@@ -36,6 +31,7 @@ flags.DEFINE_string("data_dir", default=os.path.join(os.getenv("TEST_TMPDIR", "/
 flags.DEFINE_string("model_dir", default=os.path.join(os.getenv("TEST_TMPDIR", "/tmp"), "vae/"), help="Directory to put the model's fit.")
 flags.DEFINE_integer("viz_steps", default=100, help="Frequency at which to save visualizations.")
 flags.DEFINE_integer("batch_size", default=32, help="Batch size.")
+flags.DEFINE_integer("epoch", default=1, help="Epoch count.")
 flags.DEFINE_string("activation", default="leaky_relu", help="Activation function for all hidden layers.")
 flags.DEFINE_string("encoder_id", default="lqad_encoder", help="")
 flags.DEFINE_string("decoder_id", default="lqad_decoder", help="")
@@ -145,7 +141,7 @@ def model_fn(features, labels, mode, params, config):
 
   if mode == tf.estimator.ModeKeys.PREDICT :
 
-    # define prediction
+    # Define the prediction.
     prediction = {
       '_0' : features,
       '_1' : distortion
@@ -166,9 +162,10 @@ def model_fn(features, labels, mode, params, config):
     # Define the loss.
     divergence = tfd.kl_divergence(posterior, prior)
     elbo = tf.reduce_mean(likelihood - divergence)
+    loss = -elbo
+
     learning_rate = params["learning_rate"]
     optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate)
-    loss = -elbo
     train_op = optimizer.minimize(loss, global_step=global_step)
 
     eval_metric_ops={
@@ -194,11 +191,10 @@ def static_nlog_dataset(data_dir, file_name):
   return dataset
 
 def build_input_fns(data_dir, batch_size):
-  """Builds an Iterator switching between train and heldout data."""
 
   # Build an iterator over training batches.
   training_dataset = static_nlog_dataset(data_dir, 'train')
-  training_dataset = training_dataset.batch(batch_size)
+  training_dataset = training_dataset.repeat(FLAGS.epoch).batch(batch_size)
   train_input_fn = lambda: training_dataset.make_one_shot_iterator().get_next()
 
   # Build an iterator over the heldout set.
@@ -209,14 +205,10 @@ def build_input_fns(data_dir, batch_size):
   return train_input_fn, eval_input_fn
 
 def _get_session_config_from_env_var():
-  """Returns a tf.ConfigProto instance that has appropriate device_filters set.
-
-  """
 
   tf_config = json.loads(os.environ.get('TF_CONFIG', '{}'))
 
-  if (tf_config and 'task' in tf_config and 'type' in tf_config['task'] and
-          'index' in tf_config['task']):
+  if (tf_config and 'task' in tf_config and 'type' in tf_config['task'] and 'index' in tf_config['task']):
     # Master should only communicate with itself and ps
     if tf_config['task']['type'] == 'master':
       return tf.ConfigProto(device_filters=['/job:ps', '/job:master'])
