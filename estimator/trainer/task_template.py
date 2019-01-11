@@ -70,7 +70,7 @@ def model_fn(features, labels, mode, params, config):
   )
 
 def static_nlog_dataset(data_dir, file_name):
-  dataset = tf.data.TextLineDataset(data_dir + '/' + file_name).skip(1)
+  dataset = tf.data.TextLineDataset(data_dir + '/' + file_name)
   return dataset
 
 def build_input_fns(data_dir, batch_size):

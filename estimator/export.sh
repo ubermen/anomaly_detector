@@ -4,6 +4,7 @@ GAMECODE=$1
 COLNAME=$2
 DATE=$3
 TYPE=$4
+SAMPLE_SIZE=$5
 
 GS_ROOT=gs://bigus/lqad
 
@@ -20,3 +21,4 @@ python exporter.py \
 --tmp-table $TMP_TABLE \
 --column $COLNAME \
 --dst-uri $DST_URI \
+--sample-size $SAMPLE_SIZE \
