@@ -1,5 +1,8 @@
 #!/bin/bash
 
+PROJECT_ROOT=/home/web_admin/log-quality
+export GOOGLE_APPLICATION_CREDENTIALS=$PROJECT_ROOT/credentials/bi-service.json
+
 GAMECODE=$1
 COLNAME=$2
 DATE=$3
@@ -11,10 +14,10 @@ GS_ROOT=gs://bigus/lqad
 SRC_DATASET=bigpi_${GAMECODE}
 SRC_TABLE=ParsingGameLog_${DATE}
 TMP_DATASET=bigpi_test
-TMP_TABLE=lqad_${GAMECDE}_${COLNAME}_${DATE}
+TMP_TABLE=lqad_${GAMECODE}_${COLNAME}_${DATE}
 DST_URI=$GS_ROOT/data/$GAMECODE/$COLNAME/$DATE/$TYPE
 
-python exporter.py \
+python $PROJECT_ROOT/exporter.py \
 --src-dataset $SRC_DATASET \
 --src-table $SRC_TABLE \
 --tmp-dataset $TMP_DATASET \

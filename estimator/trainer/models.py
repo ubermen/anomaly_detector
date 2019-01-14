@@ -3,6 +3,7 @@ from __future__ import division
 from __future__ import print_function
 
 import numpy as np
+import functools
 
 # Dependency imports
 import tensorflow as tf
@@ -11,7 +12,7 @@ import tensorflow_probability as tfp
 tfd = tfp.distributions
 
 class VariationalAutoencoder(object) :
-  def __init__(self, sequence_length, encoding_size, encoder_id, decoder_id, code_size=2, kernel=None, stride=None, conv1_filter=16, conv2_filter=32) :
+  def __init__(self, sequence_length, encoding_size, encoder_id, decoder_id, code_size=2, kernel=None, stride=None, conv1_filter=8, conv2_filter=16) :
     self.code_size = code_size
     self.sequence_length = sequence_length
     self.encoding_size = encoding_size
@@ -59,8 +60,15 @@ class VariationalAutoencoder(object) :
     # conv
     x = tf.reshape(data, shape=[-1, sequence_length, encoding_size, 1])
 
-    conv1 = tf.layers.conv2d(x, conv1_filter, kernel, stride, activation=tf.nn.relu, padding='same', kernel_initializer=tf.contrib.layers.xavier_initializer_conv2d(),bias_initializer=tf.contrib.layers.xavier_initializer_conv2d())
-    conv2 = tf.layers.conv2d(conv1, conv2_filter, kernel, stride, activation=tf.nn.relu, padding='same', kernel_initializer=tf.contrib.layers.xavier_initializer_conv2d(),bias_initializer=tf.contrib.layers.xavier_initializer_conv2d())
+    # layers common settings
+    conv = functools.partial(
+      tf.layers.conv2d, activation=tf.nn.relu, padding='same',
+      kernel_initializer=tf.contrib.layers.xavier_initializer_conv2d(),
+      bias_initializer=tf.contrib.layers.xavier_initializer_conv2d()
+    )
+
+    conv1 = conv(x, conv1_filter, kernel, stride)
+    conv2 = conv(conv1, conv2_filter, kernel, stride)
 
     # Flatten the data to a 1-D vector for the fully connected layer
     x = tf.contrib.layers.flatten(conv2)
@@ -74,6 +82,7 @@ class VariationalAutoencoder(object) :
     data_shape = self.data_shape
     conv1_filter = self.conv1_filter
     conv2_filter = self.conv2_filter
+    sequence_length = self.sequence_length
     encoding_size = self.encoding_size
     final_conv_shape = self.final_conv_shape
     kernel = self.kernel
@@ -89,4 +98,4 @@ class VariationalAutoencoder(object) :
     conv1 = tf.layers.conv2d_transpose(conv2, 1, kernel, stride, padding='same')
 
     logit = tf.reshape(conv1, [-1] + data_shape)
-    return tfd.Independent(tfd.Bernoulli(logit), 2)
+    return tfd.Independent(tfd.Bernoulli(logit), reinterpreted_batch_ndims=len(data_shape))
