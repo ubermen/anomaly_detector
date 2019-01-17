@@ -61,6 +61,27 @@ class Exporter(object):
 
     self.execute(query)
 
+  def shuffle_sampling_with_pad(self, column, sample_size, length):
+    query = ("SELECT SUBSTR(CONCAT({column}, '\t', CAST(TO_HEX(MD5({column})) AS STRING)), 0, {length}) AS {column} FROM (SELECT {column}, rand() AS rnum FROM `{project}.{dataset}.{table}` WHERE {column} IS NOT NULL ORDER BY rnum LIMIT {sample_size});".format(
+      column=column, sample_size=sample_size, length=length, project=self.project, dataset=self.dataset, table=self.table
+    ))
+
+    self.execute(query)
+
+  def select_all(self, column):
+    query = ("SELECT {column} FROM `{project}.{dataset}.{table}` WHERE {column} IS NOT NULL GROUP BY {column};".format(
+      column=column, project=self.project, dataset=self.dataset, table=self.table
+    ))
+
+    self.execute(query)
+
+  def select_all_with_pad(self, column, length):
+    query = ("SELECT SUBSTR(CONCAT({column}, '\t', CAST(TO_HEX(MD5({column})) AS STRING)), 0, {length}) AS {column} FROM `{project}.{dataset}.{table}` WHERE {column} IS NOT NULL GROUP BY {column};".format(
+      column=column, length=length, project=self.project, dataset=self.dataset, table=self.table
+    ))
+
+    self.execute(query)
+
 if __name__ == "__main__":
   parser = argparse.ArgumentParser(description='Process data and path info.')
   parser.add_argument('--project', default='bi-service-155107', help='')
@@ -70,6 +91,7 @@ if __name__ == "__main__":
   parser.add_argument('--tmp-table', help='')
   parser.add_argument('--column', help='')
   parser.add_argument('--sample-size', default=100000, help='')
+  parser.add_argument('--value-length', default=-1, help='')
   parser.add_argument('--dst-uri', help='GCS location from which load data')
   args = parser.parse_args()
 
@@ -82,11 +104,18 @@ if __name__ == "__main__":
   tmp_table = args.tmp_table
 
   column = args.column
-  sample_size = args.sample_size
+  sample_size = int(args.sample_size)
+
+  value_length = int(args.value_length)
 
   dst_uri = args.dst_uri
 
   exporter = Exporter(project, src_dataset, src_table, tmp_dataset, tmp_table)
-  exporter.shuffle_sampling(column, sample_size)
+  if sample_size == -1 :
+    if value_length == -1 : exporter.select_all(column)
+    else : exporter.select_all_with_pad(column, value_length)
+  else :
+    if value_length == -1 : exporter.shuffle_sampling(column, sample_size)
+    else : exporter.shuffle_sampling_with_pad(column, sample_size, value_length)
 
   exporter.export(dst_uri)

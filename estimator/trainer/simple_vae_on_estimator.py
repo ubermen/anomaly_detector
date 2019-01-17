@@ -4,6 +4,7 @@ from __future__ import print_function
 
 import json
 import os
+from random import randint
 
 # Dependency imports
 from absl import flags
@@ -27,7 +28,7 @@ stride_vertical = 1
 stride_horizontal = 2
 stride = (stride_vertical, stride_horizontal)
 
-flags.DEFINE_float("learning_rate", default=0.0001, help="Initial learning rate.")
+flags.DEFINE_float("learning_rate", default=0.00001, help="Initial learning rate.")
 flags.DEFINE_string("data_dir", default="", help="Directory where data is stored (if using real data).")
 flags.DEFINE_string("model_dir", default="", help="Directory to put the model's fit.")
 flags.DEFINE_integer("viz_steps", default=100, help="Frequency at which to save visualizations.")
@@ -37,6 +38,12 @@ flags.DEFINE_string("encoder_id", default="lqad_encoder", help="")
 flags.DEFINE_string("decoder_id", default="lqad_decoder", help="")
 
 FLAGS = flags.FLAGS
+
+def extract_origin_value(padded):
+  split_stensor = tf.string_split(padded, delimiter="\t")
+  split_tensor = tf.sparse.to_dense(split_stensor, default_value="")
+  raw_value = split_tensor[:,0]
+  return raw_value
 
 def model_fn(features, labels, mode, params, config):
 
@@ -61,8 +68,9 @@ def model_fn(features, labels, mode, params, config):
   if mode == tf.estimator.ModeKeys.PREDICT :
 
     # Define the prediction.
+    raw_value = extract_origin_value(features)
     prediction = {
-      '_0' : features,
+      '_0' : raw_value,
       '_1' : distortion
     }
 
@@ -106,11 +114,12 @@ def model_fn(features, labels, mode, params, config):
   )
 
 def preprocess(string_array):
-  string_array = tf.strings.substr(string_array,0,seq_len)
+  string_array = tf.strings.substr(string_array, 0, seq_len)
   split_stensor = tf.string_split(string_array, delimiter="")
   split_values = split_stensor.values
   unicode_values = tf.map_fn(lambda x: tf.io.decode_raw(x, tf.uint8)[0], split_values, dtype=tf.uint8)
-  #unicode_tensor = tf.sparse.to_dense(split_stensor.indices, [tf.shape(string_array)[0], seq_len], unicode_values, default_value=-1)
+  # unicode_values = tf.map_fn(lambda x: tf.cond(tf.math.less(x, enc_size), lambda: x, lambda: tf.constant(randint(0, enc_size), dtype=tf.uint8)), unicode_values)
+  unicode_values = tf.map_fn(lambda x: tf.mod(tf.to_int32(x), tf.constant(enc_size, dtype=tf.int32)), unicode_values, dtype=tf.int32)
   unicode_sparse = tf.sparse.SparseTensor(indices=split_stensor.indices, values=unicode_values, dense_shape=[tf.shape(string_array)[0], seq_len])
   unicode_tensor = tf.sparse.to_dense(unicode_sparse, default_value=-1)
   encoded_tensor = tf.map_fn(lambda x: tf.one_hot(x, enc_size), unicode_tensor, dtype=tf.float32)

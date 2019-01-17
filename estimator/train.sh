@@ -1,6 +1,6 @@
 #!/bin/bash
 
-PROJECT_ROOT=/home/web_admin/log-quality
+export PROJECT_ROOT=/home/web_admin/log-quality
 
 GAMECODE=$1
 COLNAME=$2
