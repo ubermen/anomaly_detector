@@ -16,6 +16,7 @@ class Exporter(object):
     table_ref = dataset_ref.table(self.tmp_table)
     job_config = bigquery.ExtractJobConfig()
 
+    # use delimiter which never exists in data
     job_config.field_delimiter = '\t'
     job_config.print_header = False
 
@@ -61,9 +62,9 @@ class Exporter(object):
 
     self.execute(query)
 
-  def shuffle_sampling_with_pad(self, column, sample_size, length):
-    query = ("SELECT SUBSTR(CONCAT({column}, '\t', CAST(TO_HEX(MD5({column})) AS STRING)), 0, {length}) AS {column} FROM (SELECT {column}, rand() AS rnum FROM `{project}.{dataset}.{table}` WHERE {column} IS NOT NULL ORDER BY rnum LIMIT {sample_size});".format(
-      column=column, sample_size=sample_size, length=length, project=self.project, dataset=self.dataset, table=self.table
+  def shuffle_sampling_with_md5(self, column, sample_size):
+    query = ("SELECT {column}, CAST(TO_HEX(MD5({column})) AS STRING) AS md5 FROM (SELECT {column}, rand() AS rnum FROM `{project}.{dataset}.{table}` WHERE {column} IS NOT NULL ORDER BY rnum LIMIT {sample_size});".format(
+      column=column, sample_size=sample_size, project=self.project, dataset=self.dataset, table=self.table
     ))
 
     self.execute(query)
@@ -75,9 +76,9 @@ class Exporter(object):
 
     self.execute(query)
 
-  def select_all_with_pad(self, column, length):
-    query = ("SELECT SUBSTR(CONCAT({column}, '\t', CAST(TO_HEX(MD5({column})) AS STRING)), 0, {length}) AS {column} FROM `{project}.{dataset}.{table}` WHERE {column} IS NOT NULL GROUP BY {column};".format(
-      column=column, length=length, project=self.project, dataset=self.dataset, table=self.table
+  def select_all_with_md5(self, column):
+    query = ("SELECT {column}, CAST(TO_HEX(MD5({column})) AS STRING) AS md5 FROM `{project}.{dataset}.{table}` WHERE {column} IS NOT NULL GROUP BY {column};".format(
+      column=column, project=self.project, dataset=self.dataset, table=self.table
     ))
 
     self.execute(query)
@@ -91,7 +92,7 @@ if __name__ == "__main__":
   parser.add_argument('--tmp-table', help='')
   parser.add_argument('--column', help='')
   parser.add_argument('--sample-size', default=100000, help='')
-  parser.add_argument('--value-length', default=-1, help='')
+  parser.add_argument('--gen-md5', default=False, type=lambda x: (str(x).lower() == 'true'), help='')
   parser.add_argument('--dst-uri', help='GCS location from which load data')
   args = parser.parse_args()
 
@@ -106,16 +107,17 @@ if __name__ == "__main__":
   column = args.column
   sample_size = int(args.sample_size)
 
-  value_length = int(args.value_length)
+  gen_md5 = args.gen_md5
 
   dst_uri = args.dst_uri
 
   exporter = Exporter(project, src_dataset, src_table, tmp_dataset, tmp_table)
+
   if sample_size == -1 :
-    if value_length == -1 : exporter.select_all(column)
-    else : exporter.select_all_with_pad(column, value_length)
+    if gen_md5 : exporter.select_all_with_md5(column)
+    else : exporter.select_all(column)
   else :
-    if value_length == -1 : exporter.shuffle_sampling(column, sample_size)
-    else : exporter.shuffle_sampling_with_pad(column, sample_size, value_length)
+    if gen_md5 : exporter.shuffle_sampling_with_md5(column, sample_size)
+    else : exporter.shuffle_sampling(column, sample_size)
 
   exporter.export(dst_uri)

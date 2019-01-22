@@ -8,7 +8,7 @@ COLNAME=$2
 DATE=$3
 TYPE=$4
 SAMPLE_SIZE=$5
-VALUE_LENGTH=$6
+GEN_MD5=$6
 
 GS_ROOT=gs://bigus/lqad
 
@@ -26,4 +26,4 @@ python3 $PROJECT_ROOT/exporter/exporter.py \
 --column $COLNAME \
 --dst-uri $DST_URI \
 --sample-size $SAMPLE_SIZE \
---value-length $VALUE_LENGTH \
+--gen-md5 $GEN_MD5 \

@@ -3,6 +3,7 @@ import ConfigParser as cp
 import argparse
 from pyspark import SparkContext, SparkConf
 from pyspark.sql import SparkSession, SQLContext
+from datetime import datetime as dt
 
 class Reporter(object):
 
@@ -71,7 +72,7 @@ class Reporter(object):
 
     return df
 
-  def summary(self, gamecode, column, yyyymmdd, sample_count, sample_length, temp_table='temp', sample_delimiter='|'):
+  def summary(self, gamecode, column, yyyymmdd, sample_count, sample_length, temp_table='temp', sample_delimiter='|', regdatetime=dt.now().strftime('%Y-%m-%d %H:%M:%S')):
 
     app_name = 'lqad_{gamecode}_{column}_{yyyymmdd}'.format(gamecode=gamecode, column=column, yyyymmdd=yyyymmdd)
     context = self.get_context(app_name, self.project, self.keyfile, self.submit_host, self.python_lib, self.python_files)
@@ -90,11 +91,12 @@ class Reporter(object):
             '{yyyymmdd}' as yyyymmdd,
             floor(_1) as rank,
             count(*) as count,
-            sampled_concat(collect_list(substring(_0, 0, {len}))) as sample
+            sampled_concat(collect_list(substring(_0, 0, {len}))) as sample,
+            '{regdatetime}' as regdatetime
           from {table}
           group by floor(_1)
           order by rank
-        '''.format(gamecode=gamecode, column=column, yyyymmdd=yyyymmdd, table=temp_table, len=sample_length)
+        '''.format(gamecode=gamecode, column=column, yyyymmdd=yyyymmdd, table=temp_table, len=sample_length, regdatetime=regdatetime)
     else :
       query = '''
           select
@@ -103,11 +105,12 @@ class Reporter(object):
             '{yyyymmdd}' as yyyymmdd,
             floor(_1) as rank,
             count(*) as count,
-            sampled_concat(collect_list(_0)) as sample
+            sampled_concat(collect_list(_0)) as sample,
+            '{regdatetime}' as regdatetime
           from {table}
           group by floor(_1)
           order by rank
-        '''.format(gamecode=gamecode, column=column, yyyymmdd=yyyymmdd, table=temp_table)
+        '''.format(gamecode=gamecode, column=column, yyyymmdd=yyyymmdd, table=temp_table, regdatetime=regdatetime)
 
     summary = sqlcontext.sql(query)
 
