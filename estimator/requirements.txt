@@ -1,0 +1,5 @@
+tensorflow>=1.12.0
+tensorflow_probability
+tensorflowonspark
+google-api-python-client
+google-cloud-storage

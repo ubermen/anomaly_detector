@@ -11,3 +11,13 @@ __scripts__
 ./summary.sh globalsignin devicemodel 20181004
 ./report.sh globalsignin devicemodel 20181004 10 16
 ```
+
+__virtualenv_settings__
+```
+sudo pip install venv-pack
+cd /home/web_admin/log-quality
+virtualenv -p /usr/bin/python environment
+source environment/bin/activate
+pip install -r requirements.txt 
+venv-pack -o environment.tar.gz
+```
