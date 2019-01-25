@@ -7,6 +7,8 @@ import ConfigParser as cp
 import argparse
 import tensorflow as tf
 
+default_codec = 'utf-8'
+
 from tensorflow.python.tools import saved_model_utils
 
 def get_inputs_tensor_info_from_meta_graph_def(meta_graph_def, signature_def_key):
@@ -108,17 +110,19 @@ def inference(it, num_workers, args):
       for row_num in range(rows) :
         row = bytearray("{")
         for col_num in range(cols) :
-          if col_num > 0 : row.append(",")
+          if col_num > 0 : row.extend(",")
           key = output_keys[col_num]
           value = result[col_num][row_num]
-          row += bytearray("'")
-          row += bytearray(key.decode('utf-8'), 'utf-8')
-          row += bytearray("':")
+          row.extend(bytearray("'"))
+          row.extend(bytearray(key.decode(default_codec), default_codec))
+          row.extend(bytearray("':"))
           if isinstance(value, str) :
-            row += bytearray("'" + value.decode('utf-8') + "'", 'utf-8')
+            row.extend(bytearray("'"))
+            row.extend(bytearray(value.decode(default_codec), default_codec))
+            row.extend(bytearray("'"))
           else :
-            row += bytearray(str(value))
-        row += bytearray("}\n")
+            row.extend(bytearray(str(value)))
+        row.extend(bytearray("}\n"))
         output_file.write(bytes(row))
     except tf.errors.OutOfRangeError:
       break

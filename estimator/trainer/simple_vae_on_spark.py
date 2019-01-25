@@ -13,8 +13,6 @@ import trainer.models as models
 
 tfd = tfp.distributions
 
-from google.cloud import storage
-
 seq_len = 16
 enc_size = 128
 IMAGE_SHAPE = [seq_len, enc_size, 1]
@@ -145,7 +143,6 @@ def get_list(csv):
 
 def main(args, ctx):
 
-  client = storage.Client.from_service_account_json(args.keyfile)
   os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = args.keyfile
   tf.gfile.MakeDirs(args.job_dir)
 
