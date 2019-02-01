@@ -5,25 +5,26 @@ export PROJECT_ROOT=/home/web_admin/log-quality
 GAMECODE=$1
 COLNAME=$2
 DATE=$3
-MODULE=$4
-EXEC_ALLOCATION=$5
+EXEC_ALLOCATION=$4
 EXEC_TIME="$(date +%s)"
 
 HDFS_ROOT=hdfs://datalake/lqad
 MODEL_NAME=lqad_ia
-TYPE=train
+TYPE=test
 
-JOB_NAME=${MODEL_NAME}_${TYPE}_${GAMECODE}_${COLNAME}_${DATE}_${EXEC_TIME}
-
-DATA=$HDFS_ROOT/data/$GAMECODE/$COLNAME/$DATE
 MODEL=$HDFS_ROOT/models/$MODEL_NAME/$GAMECODE/$COLNAME/$DATE
+MODEL_EXPORTER=$MODEL/export/exporter/
+MODEL_BINARIES="$(hdfs dfs -ls -C $MODEL_EXPORTER | tail -n 1)"
+
+INPUT=$HDFS_ROOT/data/$GAMECODE/$COLNAME/$DATE/$TYPE/*
+OUTPUT=$HDFS_ROOT/results/$MODEL_NAME/$GAMECODE/$COLNAME/$DATE
 
 HADOOP_HDFS_HOME=/usr/hdp/2.6.4.0-91
 LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$JAVA_HOME/jre/lib/amd64/server
 LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/lib/ams-hbase/lib/hadoop-native
 CLASSPATH=$($HADOOP_HDFS_HOME/hadoop/bin/hadoop classpath --glob)
 
-hdfs dfs -rm -r -skipTrash $MODEL
+hdfs dfs -rm -r -skipTrash $OUTPUT
 
 cd $PROJECT_ROOT &&
 rm trainer/*.pyc
@@ -41,9 +42,8 @@ spark-submit \
 --conf spark.executor.extraClassPath=$CLASSPATH \
 --num-executors $EXEC_ALLOCATION \
 --py-files trainer.zip \
-$PROJECT_ROOT/trainer/$MODULE.py \
+$PROJECT_ROOT/trainer/infer_on_spark.py \
 --cluster_size $EXEC_ALLOCATION \
---job-dir $MODEL \
---data-dir $DATA \
---engine spark \
---app-name $JOB_NAME \
+--model-dir $MODEL_BINARIES \
+--input-dir $INPUT \
+--output-dir $OUTPUT \

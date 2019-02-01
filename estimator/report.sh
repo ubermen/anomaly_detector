@@ -2,16 +2,16 @@
 
 export PROJECT_ROOT=/home/web_admin/log-quality
 
-GS_ROOT=gs://bigus/lqad
 MODEL_NAME=lqad_ia
 
-GAMECODE=$1
-COLNAME=$2
-DATE=$3
-SAMPLE_COUNT=$4
-SAMPLE_LENGTH=$5
+ROOT=$1
+GAMECODE=$2
+COLNAME=$3
+DATE=$4
+SAMPLE_COUNT=$5
+SAMPLE_LENGTH=$6
 
-SRC_DIR=$GS_ROOT/results/$MODEL_NAME/$GAMECODE/$COLNAME/$DATE
+SRC_DIR=$ROOT/results/$MODEL_NAME/$GAMECODE/$COLNAME/$DATE
 DST_TABLE=inherent_anomaly_summary
 
 spark-submit \

@@ -8,7 +8,8 @@ import argparse
 import tensorflow as tf
 import tensorflow_probability as tfp
 import trainer.utils as utils
-import trainer.kde as kde
+import trainer.kernel_ensity as kernelDensity
+import trainer.kde_normal as kdeNormal
 
 tfd = tfp.distributions
 
@@ -24,12 +25,13 @@ FLAGS = flags.FLAGS
 
 def model_fn(features, labels, mode, params, config):
 
-  kdeModel = kde.KDE_Model(2.5)
-  kdeModel.train(features)
+  kdeModel = kernelDensity.KernelDensity(loc=features, scale=np.array([3.], weight=None, kernel_dist=kdeNormal.KdeNormalWithSoftplusScale)
+
   if mode == tf.estimator.ModeKeys.PREDICT :
 
     # Define the prediction.
-    prediction_value = kdeModel.test(features)
+    prediction_value = kdeModel.log_sum_pdf(features)
+
     prediction = {
       '_0' : features,
       '_1' : prediction_value

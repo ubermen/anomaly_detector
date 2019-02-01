@@ -5,8 +5,7 @@ class Exporter(object):
 
   def __init__(self, project, src_dataset, src_table, tmp_dataset, tmp_table):
     self.project = project
-    self.dataset = src_dataset
-    self.table = src_table
+    self.src = "{project}.{dataset}.{table}".format(project=project, dataset=src_dataset, table=src_table)
     self.tmp_dataset = tmp_dataset
     self.tmp_table = tmp_table
     self.client = bigquery.Client()
@@ -22,7 +21,7 @@ class Exporter(object):
 
     extract_job = self.client.extract_table(
       table_ref,
-      dst_uri, # Location must match that of the source table.
+      dst_uri + "/000000_0", # this naming rule has to be identical to datalake-hive for future useage efficiency
       location='US', # API request
       job_config=job_config)
 
@@ -50,35 +49,36 @@ class Exporter(object):
     job.result()
 
   def copy(self):
-    query = ("SELECT * FROM `{project}.{dataset}.{table}`;".format(
-      project=self.project, dataset=self.dataset, table=self.table))
+    query = ("SELECT * FROM `{src}`;".format(
+      src=self.src
+    ))
 
     self.execute(query)
 
   def shuffle_sampling(self, column, sample_size):
-    query = ("SELECT {column} FROM (SELECT {column}, rand() AS rnum FROM `{project}.{dataset}.{table}` WHERE {column} IS NOT NULL ORDER BY rnum LIMIT {sample_size});".format(
-      column=column, sample_size=sample_size, project=self.project, dataset=self.dataset, table=self.table
+    query = ("SELECT {column} FROM (SELECT {column}, rand() AS rnum FROM `{src}` WHERE {column} IS NOT NULL ORDER BY rnum LIMIT {sample_size});".format(
+      column=column, sample_size=sample_size, src=self.src
     ))
 
     self.execute(query)
 
   def shuffle_sampling_with_md5(self, column, sample_size):
-    query = ("SELECT {column}, CAST(TO_HEX(MD5({column})) AS STRING) AS md5 FROM (SELECT {column}, rand() AS rnum FROM `{project}.{dataset}.{table}` WHERE {column} IS NOT NULL ORDER BY rnum LIMIT {sample_size});".format(
-      column=column, sample_size=sample_size, project=self.project, dataset=self.dataset, table=self.table
+    query = ("SELECT {column}, CAST(TO_HEX(MD5({column})) AS STRING) AS md5 FROM (SELECT {column}, rand() AS rnum FROM `{src}` WHERE {column} IS NOT NULL ORDER BY rnum LIMIT {sample_size});".format(
+      column=column, sample_size=sample_size, src=self.src
     ))
 
     self.execute(query)
 
   def select_all(self, column):
-    query = ("SELECT {column} FROM `{project}.{dataset}.{table}` WHERE {column} IS NOT NULL GROUP BY {column};".format(
-      column=column, project=self.project, dataset=self.dataset, table=self.table
+    query = ("SELECT {column} FROM `{src}` WHERE {column} IS NOT NULL GROUP BY {column};".format(
+      column=column, src=self.src
     ))
 
     self.execute(query)
 
   def select_all_with_md5(self, column):
-    query = ("SELECT {column}, CAST(TO_HEX(MD5({column})) AS STRING) AS md5 FROM `{project}.{dataset}.{table}` WHERE {column} IS NOT NULL GROUP BY {column};".format(
-      column=column, project=self.project, dataset=self.dataset, table=self.table
+    query = ("SELECT {column}, CAST(TO_HEX(MD5({column})) AS STRING) AS md5 FROM `{src}` WHERE {column} IS NOT NULL GROUP BY {column};".format(
+      column=column, src=self.src
     ))
 
     self.execute(query)

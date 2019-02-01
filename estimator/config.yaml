@@ -1,5 +1,5 @@
 trainingInput:
-  pythonVersion: "3.5"
+  pythonVersion: "2.7"
   scaleTier: CUSTOM
   masterType: complex_model_m_gpu
   workerType: complex_model_m_gpu

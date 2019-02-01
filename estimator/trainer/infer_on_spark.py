@@ -84,15 +84,17 @@ def inference(it, num_workers, args):
 
   # define a new tf.data.Dataset (for inferencing)
   ds = tf.data.Dataset.list_files("{}*".format(args.input_dir))
-  ds = ds.shard(num_workers, worker_num)
   ds = ds.interleave(tf.data.TextLineDataset, cycle_length=1)
+  ds = ds.shard(num_workers, worker_num)
   ds = ds.batch(100)
   iterator = ds.make_one_shot_iterator()
   input = iterator.get_next()
 
   # create an output file per spark worker for the predictions
   tf.gfile.MakeDirs(args.output_dir)
-  output_file = tf.gfile.GFile("{}/prediction.results-{:05d}-of-{:05d}".format(args.output_dir, worker_num, num_workers), mode='w')
+  file_path = "{}/prediction.results-{:05d}-of-{:05d}".format(args.output_dir, worker_num, num_workers)
+  print("worker({0}) write to {1}".format(worker_num, file_path))
+  output_file = tf.gfile.GFile(file_path, mode='w')
 
   inputs, outputs = get_input_and_output_names(model_dir, tag_set, signature_def_key)
 
