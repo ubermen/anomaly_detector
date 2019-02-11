@@ -16,4 +16,7 @@ MODEL=$GS_ROOT/models/$MODEL_NAME/$GAMECODE/$COLNAME/$DATE
 MODEL_EXPORTER=$MODEL/export/exporter/
 MODEL_BINARIES="$(gsutil ls $MODEL_EXPORTER | tail -n 1)"
 
+echo $MODEL_EXPORTER
+echo gcloud ml-engine versions create $VERSION --model $MODEL_NAME --origin $MODEL_BINARIES --runtime-version 1.8
+
 gcloud ml-engine versions create $VERSION --model $MODEL_NAME --origin $MODEL_BINARIES --runtime-version 1.8

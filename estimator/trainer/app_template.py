@@ -81,7 +81,6 @@ if __name__ == "__main__":
 
   args = parser.parse_args()
   engine = args.engine
-  storage = args.storage
 
   # set engine and run
   if engine == "spark" :

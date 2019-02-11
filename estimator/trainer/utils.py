@@ -24,28 +24,6 @@ def get_session_config_from_env_var():
       ])
   return None
 
-def build_input_fns(data_dir, batch_size):
-
-  # Build an iterator over training batches.
-  training_dataset = get_dataset_from_file(data_dir, 'train')
-  training_dataset = training_dataset.repeat().batch(batch_size)
-  train_input_fn = lambda: training_dataset.make_one_shot_iterator().get_next()
-
-  # Build an iterator over the evaluation set.
-  eval_dataset = get_dataset_from_file(data_dir, 'eval')
-  eval_dataset = eval_dataset.batch(batch_size)
-  eval_input_fn = lambda: eval_dataset.make_one_shot_iterator().get_next()
-
-  return train_input_fn, eval_input_fn
-
-def get_dataset_from_file(data_dir, file_name):
-  dataset = tf.data.TextLineDataset(data_dir + '/' + file_name)
-  return dataset
-
-def serving_input_fn():
-  string_array = tf.placeholder(tf.string, [None])
-  return tf.estimator.export.TensorServingInputReceiver(string_array, string_array)
-
 def get_list(csv):
   raw_list = csv.split(',')
   stripped_list = [v.strip() for v in raw_list]

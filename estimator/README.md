@@ -2,9 +2,12 @@
 
 __scripts__
 ```shell
-./export.sh globalsignin devicemodel 20181004 train 100000 true
-./export.sh globalsignin devicemodel 20181004 eval 1000 true
-./export.sh globalsignin devicemodel 20181004 test -1 true
+./export_from_bigquery.sh globalsignin devicemodel 20181004 train 100000 true
+./export_from_bigquery.sh globalsignin devicemodel 20181004 eval 1000 true
+./export_from_bigquery.sh globalsignin devicemodel 20181004 test -1 true
+./export_from_hive.sh globalsignin devicemodel 20181004 train 100000 true
+./export_from_hive.sh globalsignin devicemodel 20181004 eval 1000 true
+./export_from_hive.hivesh globalsignin devicemodel 20181004 test -1 true
 ./train_on_mle.sh globalsignin devicemodel 20181004 simple_vae_app
 ./train_on_spark.sh globalsignin devicemodel 20181004 simple_vae_app 10
 ./deploy.sh globalsignin devicemodel 20181004

@@ -4,6 +4,7 @@ from __future__ import print_function
 
 import math
 import numpy as np
+import tensorflow as tf
 
 from tensorflow.python.framework import constant_op
 from tensorflow.python.framework import dtypes
@@ -22,7 +23,7 @@ from tensorflow.python.util.tf_export import tf_export
 
 __all__ = [
     "KdeNormal",
-    "KdeNormalWithSoftplusScale",
+    "KdeNormalWithSoftPlusScale",
 ]
 
 
@@ -42,7 +43,7 @@ class KdeNormal(distribution.Distribution):
         self._log_size = tf.to_double(tf.size(self.loc))
         self._scale = array_ops.identity(scale, name="scale")
         self._log_normalization = 0.5 * math.log(2. * math.pi) + math_ops.log(self.scale)
-        self._log_normalization_cnt_table()
+        # self._log_normalization_cnt_table()
 
         check_ops.assert_same_float_dtype([self._loc, self._scale])
     super(KdeNormal, self).__init__(
@@ -166,7 +167,7 @@ class KdeNormal(distribution.Distribution):
 
 
 
-class KdeNormalWithSoftplusScale(KdeNormal):
+class KdeNormalWithSoftPlusScale(KdeNormal):
   """Normal with softplus applied to `scale`."""
 
   def __init__(self,
@@ -177,7 +178,7 @@ class KdeNormalWithSoftplusScale(KdeNormal):
                name="KdeNormalWithSoftplusScale"):
     parameters = dict(locals())
     with ops.name_scope(name, values=[scale]) as name:
-      super(KdeNormalWithSoftplusScale, self).__init__(
+      super(KdeNormalWithSoftPlusScale, self).__init__(
           loc=loc,
           scale=nn.softplus(scale, name="softplus_scale"),
           validate_args=validate_args,
