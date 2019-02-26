@@ -37,13 +37,11 @@ spark-submit \
 --conf spark.yarn.appMasterEnv.PYSPARK_PYTHON=./environment/bin/python \
 --archives environment.tar.gz#environment \
 --master yarn \
---conf spark.cores.max=$EXEC_ALLOCATION \
---conf spark.task.cpus=1 \
---conf spark.executor.memory=2g \
+--num-executors $EXEC_ALLOCATION \
+--executor-memory 10G \
 --conf spark.executorEnv.HADOOP_HDFS_HOME=$HADOOP_HDFS_HOME \
 --conf spark.executorEnv.LD_LIBRARY_PATH=$LD_LIBRARY_PATH \
 --conf spark.executor.extraClassPath=$CLASSPATH \
---num-executors $EXEC_ALLOCATION \
 --py-files trainer.zip \
 $PROJECT_ROOT/trainer/infer_on_spark.py \
 --cluster_size $EXEC_ALLOCATION \
