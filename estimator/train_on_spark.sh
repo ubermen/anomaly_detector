@@ -42,6 +42,9 @@ spark-submit \
 --conf spark.executorEnv.LD_LIBRARY_PATH=$LD_LIBRARY_PATH \
 --conf spark.executor.extraClassPath=$CLASSPATH \
 --py-files trainer.zip \
+--conf spark.dynamicAllocation.enabled=false \
+--conf spark.yarn.maxAppAttempts=1 \
+--conf spark.yarn.executor.memoryOverhead=4G \
 $PROJECT_ROOT/trainer/$MODULE.py \
 --cluster_size $EXEC_ALLOCATION \
 --job-dir $MODEL \
