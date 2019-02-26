@@ -7,7 +7,7 @@ __scripts__
 ./export_from_bigquery.sh globalsignin devicemodel 20181004 test -1 true
 ./export_from_hive.sh globalsignin devicemodel 20181004 train 100000 true
 ./export_from_hive.sh globalsignin devicemodel 20181004 eval 1000 true
-./export_from_hive.hivesh globalsignin devicemodel 20181004 test -1 true
+./export_from_hive.sh globalsignin devicemodel 20181004 test -1 true
 ./train_on_mle.sh globalsignin devicemodel 20181004 simple_vae_app
 ./train_on_spark.sh globalsignin devicemodel 20181004 simple_vae_app 10
 ./deploy.sh globalsignin devicemodel 20181004
@@ -15,6 +15,13 @@ __scripts__
 ./predict_on_spark.sh globalsignin devicemodel 20181004 10
 ./summary.sh globalsignin devicemodel 20181004
 ./report.sh hdfs://datalake/lqad globalsignin devicemodel 20181004 10 16
+
+./export_from_bigquery.sh globalsignin devicemodel 20181004 rule_null_count_raw -1 false
+./export_from_hive.sh globalsignin devicemodel 20181004 rule_null_count_raw -1 false
+
+./report_nullcheck.sh update_threshold hdfs://datalake/lqad globalsignin devicemodel 20181004
+./report_nullcheck.sh update_count hdfs://datalake/lqad globalsignin devicemodel 20181004
+
 ```
 
 __virtualenv_settings__

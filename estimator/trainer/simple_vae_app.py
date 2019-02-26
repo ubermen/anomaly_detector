@@ -118,7 +118,7 @@ if __name__ == "__main__":
   # common arguments
   parser.add_argument('--job-dir', help='GCS location to write checkpoints and export models')
   parser.add_argument('--data-dir', help='GCS location from which load data')
-  parser.add_argument("--batch-size", help="number of records per batch", type=int, default=100)
+  parser.add_argument("--batch-size", help="number of records per batch", type=int, default=16)
   parser.add_argument("--max-steps", help="maximum number of steps", type=int, default=1000)
   parser.add_argument("--viz-steps", type=int, default = 100)
   parser.add_argument("--keyfile", type=str, default=keyfile)
@@ -126,12 +126,12 @@ if __name__ == "__main__":
 
   # engine arguments
   parser.add_argument("--cluster_size", help="number of nodes in the cluster", type=int)
-  parser.add_argument("--num-ps", help="number of PS nodes in cluster", type=int, default=1)
+  parser.add_argument("--num-ps", help="number of PS nodes in cluster", type=int, default=3)
   parser.add_argument("--tensorboard", help="launch tensorboard process", action="store_true")
   parser.add_argument("--app-name", help="name of spark application", type=str, default="lqad_spark_application")
 
   # model arguments
-  parser.add_argument("--learning-rate", type=float, default = 0.00005)
+  parser.add_argument("--learning-rate", type=float, default = 0.0001)
   parser.add_argument("--encoder-id", type=str, default = "lqad_encoder")
   parser.add_argument("--decoder-id", type=str, default = "lqad_decoder")
 

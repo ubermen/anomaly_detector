@@ -14,10 +14,16 @@ SAMPLE_LENGTH=$6
 SRC_DIR=$ROOT/results/$MODEL_NAME/$GAMECODE/$COLNAME/$DATE
 DST_TABLE=inherent_anomaly_summary
 
+cd $PROJECT_ROOT &&
+zip -r reporter.zip reporter/*.py
 spark-submit \
+--master yarn \
+--conf spark.executor.cores=1 \
+--conf spark.executor.memory=1g \
+--num-executors 1 \
 --jars \
-$PROJECT_ROOT/reporter/jars/gcs-connector-latest-hadoop2.jar,\
-$PROJECT_ROOT/reporter/jars/mysql-connector-java-5.1.40.jar \
+reporter/jars/gcs-connector-latest-hadoop2.jar,\
+reporter/jars/mysql-connector-java-5.1.40.jar \
 $PROJECT_ROOT/reporter/reporter.py \
 --src-dir $SRC_DIR \
 --dst-table $DST_TABLE \

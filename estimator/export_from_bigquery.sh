@@ -15,7 +15,7 @@ GS_ROOT=gs://bigus/lqad
 SRC_DATASET=bigpi_${GAMECODE}
 SRC_TABLE=ParsingGameLog_${DATE}
 TMP_DATASET=bigpi_test
-TMP_TABLE=lqad_${GAMECODE}_${COLNAME}_${DATE}
+TMP_TABLE=lqad_${GAMECODE}_${COLNAME}_${TYPE}_${DATE}
 DST_URI=$GS_ROOT/data/$GAMECODE/$COLNAME/$DATE/$TYPE
 
 python3 $PROJECT_ROOT/exporter/exporter.py \
@@ -28,3 +28,4 @@ python3 $PROJECT_ROOT/exporter/exporter.py \
 --sample-size $SAMPLE_SIZE \
 --gen-md5 $GEN_MD5 \
 --src-type bigquery \
+--data-type $TYPE \

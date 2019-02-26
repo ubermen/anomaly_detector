@@ -20,9 +20,12 @@ INPUT=$HDFS_ROOT/data/$GAMECODE/$COLNAME/$DATE/$TYPE/*
 OUTPUT=$HDFS_ROOT/results/$MODEL_NAME/$GAMECODE/$COLNAME/$DATE
 
 HADOOP_HDFS_HOME=/usr/hdp/2.6.4.0-91
-LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$JAVA_HOME/jre/lib/amd64/server
-LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/lib/ams-hbase/lib/hadoop-native
 CLASSPATH=$($HADOOP_HDFS_HOME/hadoop/bin/hadoop classpath --glob)
+
+# static setting of LD_LIBRARY_PATH for remote call
+LD_LIBRARY_PATH=/lib:/usr/lib:/usr/local/lib:/usr/lib/oracle/11.2/client/lib:.:/usr/local/java/jre/lib/amd64/server:/usr/lib/ams-hbase/lib/hadoop-native
+#LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$JAVA_HOME/jre/lib/amd64/server
+#LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/lib/ams-hbase/lib/hadoop-native
 
 hdfs dfs -rm -r -skipTrash $OUTPUT
 
@@ -36,7 +39,7 @@ spark-submit \
 --master yarn \
 --conf spark.cores.max=$EXEC_ALLOCATION \
 --conf spark.task.cpus=1 \
---conf spark.executor.memory=10g \
+--conf spark.executor.memory=2g \
 --conf spark.executorEnv.HADOOP_HDFS_HOME=$HADOOP_HDFS_HOME \
 --conf spark.executorEnv.LD_LIBRARY_PATH=$LD_LIBRARY_PATH \
 --conf spark.executor.extraClassPath=$CLASSPATH \

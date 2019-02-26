@@ -26,7 +26,7 @@ def model_fn(features, labels, mode, params, config):
 
     # Define the prediction.
     prediction = {
-      '_0' : features,
+      '_0' : features_float,
       '_1' : kde.log_prob(features_float)
     }
 

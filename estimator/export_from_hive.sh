@@ -13,7 +13,7 @@ HDFS_ROOT=hdfs://datalake/lqad
 
 SRC_DATASET=${GAMECODE}_log
 SRC_TABLE=tb_parsinggamelog_${DATE}
-TMP_TABLE=lqad_${GAMECODE}_${COLNAME}_${DATE}
+TMP_TABLE=lqad_${GAMECODE}_${COLNAME}_${TYPE}_${DATE}
 DST_URI=$HDFS_ROOT/data/$GAMECODE/$COLNAME/$DATE/$TYPE
 
 hdfs dfs -rm -r -skipTrash $DST_URI
@@ -27,3 +27,4 @@ python $PROJECT_ROOT/exporter/exporter.py \
 --sample-size $SAMPLE_SIZE \
 --gen-md5 $GEN_MD5 \
 --src-type hive \
+--data-type $TYPE \
