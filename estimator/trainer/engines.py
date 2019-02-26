@@ -96,7 +96,8 @@ class SparkCluster(Engine):
       tensorboard=args.tensorboard,
       input_mode=TFCluster.InputMode.TENSORFLOW,
       log_dir=args.job_dir,
-      master_node='master'
+      master_node='master',
+      reservation_timeout=1800
     )
 
     cluster.shutdown()
