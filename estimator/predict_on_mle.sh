@@ -7,13 +7,14 @@ GAMECODE=$1
 COLNAME=$2
 DATE=$3
 EXEC_TIME="$(date +%s)"
+MODEL_DATE=$(date -d "$DATE 1 days ago" +%Y%m%d)
 
 REGION=us-central1
 GS_ROOT=gs://bigus/lqad
 MODEL_NAME=lqad_ia
 TYPE=test
 
-VERSION=_${GAMECODE}_${COLNAME}_${DATE}
+VERSION=_${GAMECODE}_${COLNAME}_${MODEL_DATE}
 VERSION_LATEST="$(gcloud ml-engine versions list --model=lqad_ia | grep $VERSION | tail -n 1 | cut -d' ' -f1)"
 JOB_NAME=${MODEL_NAME}_${TYPE}_${GAMECODE}_${COLNAME}_${DATE}_${EXEC_TIME}
 

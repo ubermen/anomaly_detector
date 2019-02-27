@@ -7,12 +7,15 @@ COLNAME=$2
 DATE=$3
 EXEC_ALLOCATION=$4
 EXEC_TIME="$(date +%s)"
+MODEL_DATE=$(date -d "$DATE 1 days ago" +%Y%m%d)
 
 HDFS_ROOT=hdfs://datalake/lqad
 MODEL_NAME=lqad_ia
 TYPE=test
 
-MODEL=$HDFS_ROOT/models/$MODEL_NAME/$GAMECODE/$COLNAME/$DATE
+JOB_NAME=${MODEL_NAME}_${TYPE}_${GAMECODE}_${COLNAME}_${DATE}_${EXEC_TIME}
+
+MODEL=$HDFS_ROOT/models/$MODEL_NAME/$GAMECODE/$COLNAME/$MODEL_DATE
 MODEL_EXPORTER=$MODEL/export/exporter/
 MODEL_BINARIES="$(hdfs dfs -ls -C $MODEL_EXPORTER | tail -n 1)"
 
@@ -47,7 +50,8 @@ spark-submit \
 --conf spark.yarn.maxAppAttempts=1 \
 --conf spark.yarn.executor.memoryOverhead=4G \
 $PROJECT_ROOT/trainer/infer_on_spark.py \
---cluster_size $EXEC_ALLOCATION \
+--cluster-size $EXEC_ALLOCATION \
 --model-dir $MODEL_BINARIES \
 --input-dir $INPUT \
 --output-dir $OUTPUT \
+--app-name $JOB_NAME \

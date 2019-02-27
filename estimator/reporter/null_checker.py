@@ -13,7 +13,7 @@ from reporter.engines import Reporter
 # 99 % : 2.58
 # 99.7 % : 3
 CONFIDENCE_INTERVAL_WEIGHT = 3
-ADJACENT_WINDOW_SIZE = 3600
+ADJACENT_WINDOW_SIZE = 600
 
 def get_date_string(base_dt, offset_date, format='%Y%m%d'):
   return (base_dt + timedelta(days=offset_date)).strftime(format)
@@ -65,10 +65,10 @@ class NullCheckReporter(Reporter):
               (SELECT 
                   P0, 
                   null_count, total_count, 
-                  FROM_UNIXTIME(UNIX_TIMESTAMP(P0) - {adj_window}) AS P0_L, P0 AS P0_R,
-                  FROM_UNIXTIME(UNIX_TIMESTAMP(P1) - {adj_window}) AS P1_L, P1 AS P1_R,
-                  FROM_UNIXTIME(UNIX_TIMESTAMP(P2) - {adj_window}) AS P2_L, P2 AS P2_R,
-                  FROM_UNIXTIME(UNIX_TIMESTAMP(P3) - {adj_window}) AS P3_L, P3 AS P3_R
+                  FROM_UNIXTIME(UNIX_TIMESTAMP(P0) - {adj_window}) AS P0_L, FROM_UNIXTIME(UNIX_TIMESTAMP(P0) + {adj_window}) AS P0_R,
+                  FROM_UNIXTIME(UNIX_TIMESTAMP(P1) - {adj_window}) AS P1_L, FROM_UNIXTIME(UNIX_TIMESTAMP(P1) + {adj_window}) AS P1_R,
+                  FROM_UNIXTIME(UNIX_TIMESTAMP(P2) - {adj_window}) AS P2_L, FROM_UNIXTIME(UNIX_TIMESTAMP(P2) + {adj_window}) AS P2_R,
+                  FROM_UNIXTIME(UNIX_TIMESTAMP(P3) - {adj_window}) AS P3_L, FROM_UNIXTIME(UNIX_TIMESTAMP(P3) + {adj_window}) AS P3_R
                 FROM
                 (SELECT 
                   null_count, total_count,
@@ -115,10 +115,10 @@ class NullCheckReporter(Reporter):
         (SELECT 
             P0, 
             p, sigma_pi,
-            FROM_UNIXTIME(UNIX_TIMESTAMP(P0) - {adj_window}) AS P0_L, P0 AS P0_R,
-            FROM_UNIXTIME(UNIX_TIMESTAMP(P1) - {adj_window}) AS P1_L, P1 AS P1_R,
-            FROM_UNIXTIME(UNIX_TIMESTAMP(P2) - {adj_window}) AS P2_L, P2 AS P2_R,
-            FROM_UNIXTIME(UNIX_TIMESTAMP(P3) - {adj_window}) AS P3_L, P3 AS P3_R
+            FROM_UNIXTIME(UNIX_TIMESTAMP(P0) - {adj_window}) AS P0_L, FROM_UNIXTIME(UNIX_TIMESTAMP(P0) + {adj_window}) AS P0_R,
+            FROM_UNIXTIME(UNIX_TIMESTAMP(P1) - {adj_window}) AS P1_L, FROM_UNIXTIME(UNIX_TIMESTAMP(P1) + {adj_window}) AS P1_R,
+            FROM_UNIXTIME(UNIX_TIMESTAMP(P2) - {adj_window}) AS P2_L, FROM_UNIXTIME(UNIX_TIMESTAMP(P2) + {adj_window}) AS P2_R,
+            FROM_UNIXTIME(UNIX_TIMESTAMP(P3) - {adj_window}) AS P3_L, FROM_UNIXTIME(UNIX_TIMESTAMP(P3) + {adj_window}) AS P3_R
           FROM
           (SELECT 
             p, sigma_pi,

@@ -136,12 +136,23 @@ if __name__ == '__main__':
   from pyspark.context import SparkContext
   from pyspark.conf import SparkConf
 
+  keyfile = "/etl/credentials/bi-service-155107.json"
+
+  parser = argparse.ArgumentParser()
+  parser.add_argument("--cluster-size", help="number of nodes in the cluster (for S with labelspark Standalone)", type=int)
+  parser.add_argument("--model-dir", help="gcs path of model", type=str, default="lqad_export")
+  parser.add_argument('--input-dir', type=str, help='gcs path of input data')
+  parser.add_argument("--output-dir", help="gcs path to save predictions", type=str, default="predictions")
+
+  parser.add_argument("--keyfile", type=str, default=keyfile)
+  parser.add_argument("--app-name", help="name of spark application", type=str, default="lqad_spark_application")
+
+  args = parser.parse_args()
+
   config = cp.ConfigParser()
   config.readfp(open('{PROJECT_ROOT}/defaults.cfg'.format(**os.environ)))
 
   project = config.get('gcp', 'project')
-  keyfile = "/etl/credentials/bi-service-155107.json"
-  app_name = 'lqad_train_on_spark_test'
 
   driver = config.get('mysql', 'driver')
   url = config.get('mysql', 'url')
@@ -153,21 +164,10 @@ if __name__ == '__main__':
 
   python_lib = config.get('environment', 'python_lib')
   python_files = get_list(config.get('environment', 'python_files'))
-  sc = get_context(app_name, project, keyfile, submit_host, python_lib, python_files)
+  sc = get_context(args.app_name, project, keyfile, submit_host, python_lib, python_files)
 
   executors = sc._conf.get("spark.executor.instances")
   num_executors = int(executors) if executors is not None else 1
-
-  parser = argparse.ArgumentParser()
-  parser.add_argument("--cluster-size", help="number of nodes in the cluster (for S with labelspark Standalone)", type=int, default=num_executors)
-  parser.add_argument("--model-dir", help="gcs path of model", type=str, default="lqad_export")
-  parser.add_argument('--input-dir', type=str, help='gcs path of input data')
-  parser.add_argument("--output-dir", help="gcs path to save predictions", type=str, default="predictions")
-
-  parser.add_argument("--keyfile", type=str, default=keyfile)
-
-  args, _ = parser.parse_known_args()
-  print("args: {}".format(args))
 
   # Not using TFCluster... just running single-node TF instances on each executor
   nodes = list(range(args.cluster_size))

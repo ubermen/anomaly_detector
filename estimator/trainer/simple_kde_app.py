@@ -79,7 +79,7 @@ if __name__ == "__main__":
   parser.add_argument("--engine", type=str, default="spark")
 
   # engine arguments
-  parser.add_argument("--cluster_size", help="number of nodes in the cluster", type=int)
+  parser.add_argument("--cluster-size", help="number of nodes in the cluster", type=int)
   parser.add_argument("--num-ps", help="number of PS nodes in cluster", type=int, default=1)
   parser.add_argument("--tensorboard", help="launch tensorboard process", action="store_true")
   parser.add_argument("--app-name", help="name of spark application", type=str, default="lqad_spark_application")

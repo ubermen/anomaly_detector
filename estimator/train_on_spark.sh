@@ -46,7 +46,7 @@ spark-submit \
 --conf spark.yarn.maxAppAttempts=1 \
 --conf spark.yarn.executor.memoryOverhead=4G \
 $PROJECT_ROOT/trainer/$MODULE.py \
---cluster_size $EXEC_ALLOCATION \
+--cluster-size $EXEC_ALLOCATION \
 --job-dir $MODEL \
 --data-dir $DATA \
 --engine spark \
