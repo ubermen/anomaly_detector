@@ -28,3 +28,4 @@ python $PROJECT_ROOT/exporter/exporter.py \
 --gen-md5 $GEN_MD5 \
 --src-type hive \
 --data-type $TYPE \
+--yyyymmdd $DATE \

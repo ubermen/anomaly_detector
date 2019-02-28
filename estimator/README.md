@@ -19,8 +19,14 @@ __scripts__
 ./export_from_bigquery.sh globalsignin devicemodel 20181004 rule_null_count_raw -1 false
 ./export_from_hive.sh globalsignin devicemodel 20181004 rule_null_count_raw -1 false
 
-./report_nullcheck.sh update_threshold hdfs://datalake/lqad globalsignin devicemodel 20181004
-./report_nullcheck.sh update_count hdfs://datalake/lqad globalsignin devicemodel 20181004
+./export_from_bigquery.sh globalsignin countrycd 20181004 rule_freq_count_raw -1 false
+./export_from_hive.sh globalsignin countrycd 20181004 rule_null_freq_raw -1 false
+
+./report_rulebase_check.sh null_checker update_threshold hdfs://datalake/lqad globalsignin devicemodel 20181004
+./report_rulebase_check.sh null_checker update_count hdfs://datalake/lqad globalsignin devicemodel 20181004
+
+./report_rulebase_check.sh freq_checker update_threshold hdfs://datalake/lqad globalsignin countrycd 20181004
+./report_rulebase_check.sh freq_checker update_count hdfs://datalake/lqad globalsignin countrycd 20181004
 
 ```
 

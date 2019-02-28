@@ -29,3 +29,4 @@ python3 $PROJECT_ROOT/exporter/exporter.py \
 --gen-md5 $GEN_MD5 \
 --src-type bigquery \
 --data-type $TYPE \
+--yyyymmdd $DATE \

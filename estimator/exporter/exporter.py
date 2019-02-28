@@ -32,6 +32,11 @@ class Exporter(object):
       column=column, src=self.src, tmp = self.tmp_table, bucket=self.bucket
     ))
 
+  def select_freq_count(self, column, date):
+    self.select_query = ("SELECT '{date}', {column}, count(*)  FROM `{src}` WHERE {column} IS NOT NULL GROUP BY {column}".format(
+      date=date, column=column, src=self.src
+    ))
+
 class HiveExporter(Exporter):
 
   def __init__(self, project, src_dataset, src_table, tmp_dataset, tmp_table):
@@ -107,6 +112,11 @@ class BigqueryExporter(Exporter):
     # export
     self.export_to_gcs(table_ref, self.client, dst_uri)
 
+
+def get_date(yyyymmdd):
+  from datetime import datetime
+  return datetime.strptime(yyyymmdd, '%Y%m%d')
+
 if __name__ == "__main__":
   parser = argparse.ArgumentParser(description='Process data and path info.')
   parser.add_argument('--project', default='bi-service-155107', help='')
@@ -120,6 +130,7 @@ if __name__ == "__main__":
   parser.add_argument('--dst-uri', help='GCS location from which load data')
   parser.add_argument('--src-type', default='hive')
   parser.add_argument('--data-type', default='train')
+  parser.add_argument('--yyyymmdd')
   args = parser.parse_args()
 
   project = args.project
@@ -139,6 +150,7 @@ if __name__ == "__main__":
   src_type = args.src_type
 
   data_type = args.data_type
+  yyyymmdd = args.yyyymmdd
 
   # set src type
   if src_type == "hive" :
@@ -158,5 +170,7 @@ if __name__ == "__main__":
   else :
     if data_type == "rule_null_count_raw" :
       exporter.select_null_count(column)
+    elif data_type == "rule_freq_count_raw" :
+      exporter.select_freq_count(column, get_date(yyyymmdd))
 
   exporter.export(dst_uri)
