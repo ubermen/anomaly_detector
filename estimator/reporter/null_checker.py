@@ -111,7 +111,7 @@ class NullCheckReporter(Reporter):
 
     query = '''
       SELECT '{gamecode}' AS gamecode, '{column}' AS column, P0 AS bucket_dt, p+{conf_interval_weight}*sigma_pi*sigma_zi AS threshold FROM
-      (SELECT P0, MIN(T2.p) AS p, MIN(T2.sigma_pi) AS sigma_pi, STDDEV(T3.zi) AS sigma_zi FROM
+      (SELECT P0, MIN(T2.p) AS p, MIN(T2.sigma_pi) AS sigma_pi, STDDEV_POP(T3.zi) AS sigma_zi FROM
         (SELECT 
             P0, 
             p, sigma_pi,
