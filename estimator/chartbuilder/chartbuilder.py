@@ -1,7 +1,77 @@
 from superset import db
 from superset.connectors.connector_registry import ConnectorRegistry
 from superset.connectors.sqla.models import TableColumn
-from superset.models.core import Slice
+from superset.models.core import Slice, Dashboard, dashboard_slices
+
+from flask_appbuilder import Model
+from sqlalchemy import Column, Integer, ForeignKey
+
+class DashboardSlices(Model):
+  __tablename__ = 'dashboard_slices'
+  id = Column(Integer, primary_key=True)
+  dashboard_id = Column(Integer, ForeignKey('dashboards.id'))
+  slice_id = Column(Integer, ForeignKey('slices.id'))
+
+def create_dashboard(type, gamecode):
+  dashboard_name = '{type}_{gamecode}'.format(type=type, gamecode=gamecode)
+  dashboard = db.session.query(Dashboard).filter_by(dashboard_title=dashboard_name).first()
+  if not dashboard: dashboard = Dashboard(dashboard_title=dashboard_name)
+  db.session.merge(dashboard)
+
+  TBL = ConnectorRegistry.sources['table']
+  tables = db.session.query(TBL).filter(TBL.table_name.like(dashboard_name+'%')).all()
+
+  position_json = '{'
+  tname_list = []
+
+  for table in tables :
+    id = table.id
+    table_name = table.table_name
+    column_idx = table_name.rindex('_')+1
+    column = table_name[column_idx:]
+
+    slice = db.session.query(Slice).filter_by(datasource_id=id).first()
+    slice_json = '''
+        "CHART-{tname}":{{"id":"CHART-{tname}", "meta":{{"sliceName":"{tname}", "chartId":{id}, "height":52, "width":12}}, "type":"CHART"}},
+        "ROW-{tname}":{{"id":"ROW-{tname}", "meta":{{"background":"BACKGROUND_TRANSPARENT"}}, "children":["CHART-{tname}"], "type":"ROW"}},
+        "TAB-{tname}":{{"id":"TAB-{tname}", "meta":{{"text":"{colname}"}}, "children":["ROW-{tname}"], "type":"TAB"}},
+        '''.format(tname=table_name, id=slice.id, colname=column)
+    position_json += slice_json
+    tname_list.append(table_name)
+
+    dashboard_slices_row = db.session.query(DashboardSlices).filter_by(dashboard_id=dashboard.id, slice_id=slice.id).first()
+    if not dashboard_slices_row: dashboard_slices_row = DashboardSlices(dashboard_id=dashboard.id, slice_id=slice.id)
+    db.session.merge(dashboard_slices_row)
+
+  count = 0
+  unit = 10
+  tabs_map = {}
+  for tname in tname_list :
+    tabs_num = int(count/unit)
+    if count % unit == 0 : tabs_map[tabs_num] = []
+    tabs_map[tabs_num].append('"TAB-{tname}"'.format(tname=tname))
+    count += 1
+
+  tabs_id_list = []
+  for tabs_num in tabs_map :
+    tabs_id = '"TABS-{tabs_num}"'.format(tabs_num=str(tabs_num))
+    tabs_json = '{tabs_id}:{{"id":{tabs_id}, "children":[{tab_id_csv}], "type":"TABS"}},\n'.format(tabs_id=tabs_id, tab_id_csv=','.join(tabs_map[tabs_num]))
+    position_json += tabs_json
+    tabs_id_list.append(tabs_id)
+
+  grid_json = '"GRID_ID": {{"id":"GRID_ID", "children":[{tabs_id_csv}], "type":"GRID"}},\n'.format(tabs_id_csv=','.join(tabs_id_list))
+  position_json += grid_json
+  position_json += '''
+    "ROOT_ID": {{ "id":"ROOT_ID", "children":["GRID_ID"], "type":"ROOT"}},
+    "HEADER_ID": {{"id":"HEADER_ID", "meta":{{ "text":"{dashboard_name}"}}, "type":"HEADER"}},
+    "DASHBOARD_VERSION_KEY":"v2"
+    }}
+    '''.format(dashboard_name=dashboard_name)
+
+  dashboard.position_json = position_json
+
+  db.session.merge(dashboard)
+  db.session.commit()
 
 def create_chart(type, gamecode, column):
 
