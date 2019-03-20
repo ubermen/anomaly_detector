@@ -1,7 +1,7 @@
 from superset import db
 from superset.connectors.connector_registry import ConnectorRegistry
 from superset.connectors.sqla.models import TableColumn
-from superset.models.core import Slice, Dashboard
+from superset.models.core import Slice, Dashboard, Database
 
 from flask_appbuilder import Model
 from sqlalchemy import Column, Integer, ForeignKey
@@ -81,7 +81,7 @@ def create_chart(type, gamecode, column):
   print('Creating table {} reference'.format(tbl_name))
   tbl = db.session.query(TBL).filter_by(table_name=tbl_name).first()
   if not tbl: tbl = TBL(table_name=tbl_name)
-  tbl.database_id = 2
+  tbl.database_id = db.session.query(Database).filter_by(database_name='lqad').first().id
   tbl.sql = '''
     SELECT *, IF(threshold < score, -score, null) AS alert FROM
     (
