@@ -6,6 +6,12 @@ from superset.models.core import Slice, Dashboard, Database
 from flask_appbuilder import Model
 from sqlalchemy import Column, Integer, ForeignKey
 
+import importlib
+
+# default settings
+dashboard_name_template = '{type}_{gamecode}'
+chart_name_template = dashboard_name_template + '_{column}'
+
 class DashboardSlices(Model):
   __tablename__ = 'dashboard_slices'
   id = Column(Integer, primary_key=True)
@@ -13,10 +19,12 @@ class DashboardSlices(Model):
   slice_id = Column(Integer, ForeignKey('slices.id'))
 
 def create_dashboard(type, gamecode):
-  dashboard_name = '{type}_{gamecode}'.format(type=type, gamecode=gamecode)
+  dashboard_name = dashboard_name_template.format(type=type, gamecode=gamecode)
   dashboard = db.session.query(Dashboard).filter_by(dashboard_title=dashboard_name).first()
-  if not dashboard: dashboard = Dashboard(dashboard_title=dashboard_name)
-  db.session.merge(dashboard)
+  if not dashboard:
+    dashboard = Dashboard(dashboard_title=dashboard_name)
+    db.session.merge(dashboard)
+    dashboard = db.session.query(Dashboard).filter_by(dashboard_title=dashboard_name).first()
 
   TBL = ConnectorRegistry.sources['table']
   tables = db.session.query(TBL).filter(TBL.table_name.like(dashboard_name+'%')).all()
@@ -27,7 +35,7 @@ def create_dashboard(type, gamecode):
   for table in tables :
     id = table.id
     table_name = table.table_name
-    column_idx = table_name.rindex('_')+1
+    column_idx = len(dashboard_name)+1
     column = table_name[column_idx:]
 
     slice = db.session.query(Slice).filter_by(datasource_id=id).first()
@@ -73,62 +81,42 @@ def create_dashboard(type, gamecode):
   db.session.merge(dashboard)
   db.session.commit()
 
-def create_chart(type, gamecode, column):
+def create_chart(type, gamecode, column, template):
+  template_module = importlib.import_module("superset.chartbuilder.templates."+template)
 
   TBL = ConnectorRegistry.sources['table']
-  tbl_name = '{type}_{gamecode}_{column}'.format(type=type, gamecode=gamecode, column=column)
+  tbl_name = chart_name_template.format(type=type, gamecode=gamecode, column=column)
 
   print('Creating table {} reference'.format(tbl_name))
   tbl = db.session.query(TBL).filter_by(table_name=tbl_name).first()
   if not tbl: tbl = TBL(table_name=tbl_name)
   tbl.database_id = db.session.query(Database).filter_by(database_name='lqad').first().id
-  tbl.sql = '''
-    SELECT *, IF(threshold < score, -score, null) AS alert FROM
-    (
-        SELECT 
-            T2.bucket_dt, 
-            if(T1.threshold is null, 0, T1.threshold) as threshold, 
-            T2.score
-        FROM
-            (SELECT bucket_dt, max(threshold) as threshold FROM lqad.rulebase_nullcheck_threshold WHERE gamecode = '{{ gamecode }}' AND `column` = '{{ column }}' GROUP BY bucket_dt) T1 JOIN
-            (SELECT bucket_dt, max(format(null_count/total_count, 9)) AS score FROM lqad.rulebase_nullcheck_count WHERE gamecode = '{{ gamecode }}' AND `column` = '{{ column }}' GROUP BY bucket_dt) T2
-            ON T1.bucket_dt = DATE_SUB(T2.bucket_dt, INTERVAL 1 DAY)
-    ) T3
-    '''
-
-  tbl.template_params = '{{"gamecode":"{gamecode}", "column":"i_{column}"}}'.format(gamecode=gamecode, column=column)
+  tbl.sql = template_module.template.format(gamecode=gamecode, column=column)
   db.session.merge(tbl)
 
   tbl = db.session.query(TBL).filter_by(table_name=tbl_name).first()
-
-  bucket_dt = db.session.query(TableColumn).filter_by(table_id=tbl.id, column_name='bucket_dt').first()
-  threshold = db.session.query(TableColumn).filter_by(table_id=tbl.id, column_name='threshold').first()
-  score = db.session.query(TableColumn).filter_by(table_id=tbl.id, column_name='score').first()
-  alert = db.session.query(TableColumn).filter_by(table_id=tbl.id, column_name='alert').first()
-  if not bucket_dt: bucket_dt = TableColumn(table_id=tbl.id, column_name='bucket_dt', is_dttm=1)
-  if not threshold: threshold = TableColumn(table_id=tbl.id, column_name='threshold')
-  if not score: score = TableColumn(table_id=tbl.id, column_name='score')
-  if not alert: alert = TableColumn(table_id=tbl.id, column_name='alert')
-
+  bucket_dt = db.session.query(TableColumn).filter_by(table_id=tbl.id, column_name=template_module.time_column).first()
+  if not bucket_dt: bucket_dt = TableColumn(table_id=tbl.id, column_name=template_module.time_column, is_dttm=1)
   db.session.merge(bucket_dt)
-  db.session.merge(threshold)
-  db.session.merge(score)
-  db.session.merge(alert)
 
-  threshold = db.session.query(TableColumn).filter_by(table_id=tbl.id, column_name='threshold').first()
-  score = db.session.query(TableColumn).filter_by(table_id=tbl.id, column_name='score').first()
-  alert = db.session.query(TableColumn).filter_by(table_id=tbl.id, column_name='alert').first()
+  metric_json = []
+  for metric in template_module.metrics :
+    metric_obj = db.session.query(TableColumn).filter_by(table_id=tbl.id, column_name=metric).first()
+    if not metric_obj:
+      metric_obj = TableColumn(table_id=tbl.id, column_name=metric)
+      db.session.merge(metric_obj)
+      metric_obj = db.session.query(TableColumn).filter_by(table_id=tbl.id, column_name=metric).first()
+    metric_json.append('{{"column": {{"id": {metric_id}, "column_name": "{metric}"}}, "label": "{metric}", "aggregate": "MAX", "expressionType": "SIMPLE"}}' \
+                       .format(metric_id=metric_obj.id, metric=metric))
 
   slice = db.session.query(Slice).filter_by(datasource_id=tbl.id).first()
   if not slice: slice = Slice(datasource_id=tbl.id, slice_name=tbl_name, datasource_name=tbl_name, datasource_type='table', viz_type='line', created_by_fk=1)
   slice.params='''
-    {{"datasource": "{datasource}", "granularity_sqla": "bucket_dt", "time_grain_sqla": "PT1M", "time_range": "Last week", 
+    {{"datasource": "{datasource}", "granularity_sqla": "{time_column}", "time_grain_sqla": "PT1M", "time_range": "Last week", 
     "metrics": [
-    {{"column": {{"id": {threshold_id}, "column_name": "threshold"}}, "label": "threshold", "aggregate": "MAX", "expressionType": "SIMPLE"}}, 
-    {{"column": {{"id": {score_id}, "column_name": "score"}}, "label": "score", "aggregate": "MAX", "expressionType": "SIMPLE"}}, 
-    {{"column": {{"id": {alert_id}, "column_name": "alert"}}, "label": "alert", "aggregate": "MIN", "expressionType": "SIMPLE"}}
+    {metric_json}
     ]}}
-    '''.format(datasource=str(tbl.id)+'__table', threshold_id=threshold.id, score_id=score.id, alert_id=alert.id)
+    '''.format(datasource=str(tbl.id)+'__table', time_column=template_module.time_column, metric_json=',\n'.join(metric_json))
   db.session.merge(slice)
 
   db.session.commit()
