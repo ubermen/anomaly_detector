@@ -81,8 +81,8 @@ def create_dashboard(type, gamecode):
   db.session.merge(dashboard)
   db.session.commit()
 
-def create_chart(type, gamecode, column, template):
-  template_module = importlib.import_module("superset.chartbuilder.templates."+template)
+def create_chart(type, gamecode, column):
+  template_module = importlib.import_module("superset.chartbuilder.templates."+type)
 
   TBL = ConnectorRegistry.sources['table']
   tbl_name = chart_name_template.format(type=type, gamecode=gamecode, column=column)
