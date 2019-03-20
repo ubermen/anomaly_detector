@@ -1,7 +1,7 @@
 from superset import db
 from superset.connectors.connector_registry import ConnectorRegistry
 from superset.connectors.sqla.models import TableColumn
-from superset.models.core import Slice, Dashboard, dashboard_slices
+from superset.models.core import Slice, Dashboard
 
 from flask_appbuilder import Model
 from sqlalchemy import Column, Integer, ForeignKey
