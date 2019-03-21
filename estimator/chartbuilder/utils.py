@@ -82,7 +82,7 @@ def create_dashboard(type, gamecode):
   db.session.commit()
 
 def create_chart(type, gamecode, column):
-  template_module = importlib.import_module("superset.chartbuilder.templates."+type)
+  template = importlib.import_module("superset.chartbuilder.templates."+type)
 
   TBL = ConnectorRegistry.sources['table']
   tbl_name = chart_name_template.format(type=type, gamecode=gamecode, column=column)
@@ -90,17 +90,17 @@ def create_chart(type, gamecode, column):
   print('Creating table {} reference'.format(tbl_name))
   tbl = db.session.query(TBL).filter_by(table_name=tbl_name).first()
   if not tbl: tbl = TBL(table_name=tbl_name)
-  tbl.database_id = db.session.query(Database).filter_by(database_name=template_module.database_name).first().id
-  tbl.sql = template_module.template.format(gamecode=gamecode, column=column)
+  tbl.database_id = db.session.query(Database).filter_by(database_name=template.database_name).first().id
+  tbl.sql = template.table_sql.format(gamecode=gamecode, column=column)
   db.session.merge(tbl)
 
   tbl = db.session.query(TBL).filter_by(table_name=tbl_name).first()
-  bucket_dt = db.session.query(TableColumn).filter_by(table_id=tbl.id, column_name=template_module.time_column).first()
-  if not bucket_dt: bucket_dt = TableColumn(table_id=tbl.id, column_name=template_module.time_column, is_dttm=1)
+  bucket_dt = db.session.query(TableColumn).filter_by(table_id=tbl.id, column_name=template.time_column).first()
+  if not bucket_dt: bucket_dt = TableColumn(table_id=tbl.id, column_name=template.time_column, is_dttm=1)
   db.session.merge(bucket_dt)
 
   metric_json = []
-  for metric in template_module.metrics :
+  for metric in template.metrics :
     metric_obj = db.session.query(TableColumn).filter_by(table_id=tbl.id, column_name=metric).first()
     if not metric_obj:
       metric_obj = TableColumn(table_id=tbl.id, column_name=metric)
@@ -116,7 +116,7 @@ def create_chart(type, gamecode, column):
     "metrics": [
     {metric_json}
     ]}}
-    '''.format(datasource=str(tbl.id)+'__table', time_column=template_module.time_column, metric_json=',\n'.join(metric_json))
+    '''.format(datasource=str(tbl.id)+'__table', time_column=template.time_column, metric_json=',\n'.join(metric_json))
   db.session.merge(slice)
 
   db.session.commit()
