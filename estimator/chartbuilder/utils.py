@@ -90,7 +90,7 @@ def create_chart(type, gamecode, column):
   print('Creating table {} reference'.format(tbl_name))
   tbl = db.session.query(TBL).filter_by(table_name=tbl_name).first()
   if not tbl: tbl = TBL(table_name=tbl_name)
-  tbl.database_id = db.session.query(Database).filter_by(database_name='lqad').first().id
+  tbl.database_id = db.session.query(Database).filter_by(database_name=template_module.database_name).first().id
   tbl.sql = template_module.template.format(gamecode=gamecode, column=column)
   db.session.merge(tbl)
 

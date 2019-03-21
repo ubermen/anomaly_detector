@@ -1,3 +1,4 @@
+database_name = 'lqad'
 time_column = 'bucket_dt'
 metrics = ['threshold', 'score', 'alert']
 template = '''
