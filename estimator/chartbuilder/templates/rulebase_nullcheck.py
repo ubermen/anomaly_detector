@@ -1,6 +1,7 @@
 database_name = 'lqad'
 time_column = 'bucket_dt'
 metrics = ['threshold', 'score', 'alert']
+viz_type = 'line'
 table_sql = '''
 SELECT *, IF(threshold < score, -score, null) AS alert FROM
 (

@@ -95,28 +95,41 @@ def create_chart(type, gamecode, column):
   db.session.merge(tbl)
 
   tbl = db.session.query(TBL).filter_by(table_name=tbl_name).first()
-  bucket_dt = db.session.query(TableColumn).filter_by(table_id=tbl.id, column_name=template.time_column).first()
-  if not bucket_dt: bucket_dt = TableColumn(table_id=tbl.id, column_name=template.time_column, is_dttm=1)
-  db.session.merge(bucket_dt)
-
-  metric_json = []
-  for metric in template.metrics :
-    metric_obj = db.session.query(TableColumn).filter_by(table_id=tbl.id, column_name=metric).first()
-    if not metric_obj:
-      metric_obj = TableColumn(table_id=tbl.id, column_name=metric)
-      db.session.merge(metric_obj)
-      metric_obj = db.session.query(TableColumn).filter_by(table_id=tbl.id, column_name=metric).first()
-    metric_json.append('{{"column": {{"id": {metric_id}, "column_name": "{metric}"}}, "label": "{metric}", "aggregate": "MAX", "expressionType": "SIMPLE"}}' \
-                       .format(metric_id=metric_obj.id, metric=metric))
 
   slice = db.session.query(Slice).filter_by(datasource_id=tbl.id).first()
-  if not slice: slice = Slice(datasource_id=tbl.id, slice_name=tbl_name, datasource_name=tbl_name, datasource_type='table', viz_type='line', created_by_fk=1)
-  slice.params='''
-    {{"datasource": "{datasource}", "granularity_sqla": "{time_column}", "time_grain_sqla": "PT1M", "time_range": "Last week", 
-    "metrics": [
-    {metric_json}
-    ]}}
-    '''.format(datasource=str(tbl.id)+'__table', time_column=template.time_column, metric_json=',\n'.join(metric_json))
-  db.session.merge(slice)
+  if not slice: slice = Slice(datasource_id=tbl.id, slice_name=tbl_name, datasource_name=tbl_name, datasource_type='table', viz_type=template.viz_type, created_by_fk=1)
 
+  if template.viz_type == 'line' :
+    bucket_dt = db.session.query(TableColumn).filter_by(table_id=tbl.id, column_name=template.time_column).first()
+    if not bucket_dt: bucket_dt = TableColumn(table_id=tbl.id, column_name=template.time_column, is_dttm=1)
+    db.session.merge(bucket_dt)
+
+    metric_json = []
+    for metric in template.metrics :
+      metric_obj = db.session.query(TableColumn).filter_by(table_id=tbl.id, column_name=metric).first()
+      if not metric_obj:
+        metric_obj = TableColumn(table_id=tbl.id, column_name=metric)
+        db.session.merge(metric_obj)
+        metric_obj = db.session.query(TableColumn).filter_by(table_id=tbl.id, column_name=metric).first()
+      metric_json.append('{{"column": {{"id": {metric_id}, "column_name": "{metric}"}}, "label": "{metric}", "aggregate": "MAX", "expressionType": "SIMPLE"}}' \
+                         .format(metric_id=metric_obj.id, metric=metric))
+
+    slice.params='''
+        {{"datasource": "{datasource}", "granularity_sqla": "{time_column}", "time_grain_sqla": "PT1M", "time_range": "Last week", 
+        "metrics": [
+        {metric_json}
+        ]}}
+        '''.format(datasource=str(tbl.id)+'__table', time_column=template.time_column, metric_json=',\n'.join(metric_json))
+
+  elif template.viz_type == 'table' :
+    for metric in template.metrics :
+      metric_obj = db.session.query(TableColumn).filter_by(table_id=tbl.id, column_name=metric).first()
+      if not metric_obj:
+        metric_obj = TableColumn(table_id=tbl.id, column_name=metric)
+        db.session.merge(metric_obj)
+
+    slice.params='{{"datasource": "{datasource}", "metrics": [], "all_columns": ["{metric_csv}"]}}' \
+      .format(datasource=str(tbl.id)+'__table', metric_csv='", "'.join(template.metrics))
+
+  db.session.merge(slice)
   db.session.commit()
